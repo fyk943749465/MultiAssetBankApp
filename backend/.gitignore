@@ -1,0 +1,7 @@
+/bin/
+*.exe
+
+# 本地环境变量（含密钥），勿提交
+.env
+.env.*
+!.env.example

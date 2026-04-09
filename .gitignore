@@ -1,0 +1,9 @@
+.idea/
+
+# 后端 / 前端本地环境变量（子目录内另有 .gitignore，此处为 monorepo 根仓库兜底）
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
