@@ -1,0 +1,8 @@
+{
+  "sepolia": {
+    "MultiAssetBank": {
+      "address": "0x668A7A8372C41EE0be46a4eA34e6eafeaA4E9748",
+      "startBlock": 10616456
+    }
+  }
+}

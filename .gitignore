@@ -7,3 +7,8 @@ backend/.env.*
 frontend/.env
 frontend/.env.*
 !frontend/.env.example
+
+# The Graph 子图（graph init / build 产物）
+subgraph/node_modules/
+subgraph/build/
+subgraph/generated/
