@@ -13,6 +13,7 @@ import (
 	"go-chain/backend/internal/handlers"
 	"go-chain/backend/internal/indexer"
 	"go-chain/backend/internal/router"
+	"go-chain/backend/internal/subgraph"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -66,7 +67,19 @@ func main() {
 		}
 	}
 
-	h := &handlers.Handlers{DB: db, Chain: ethClient, Counter: counter, TxKey: txKey}
+	var subClient *subgraph.Client
+	if u := strings.TrimSpace(cfg.SubgraphURL); u != "" {
+		subClient = subgraph.New(u, cfg.SubgraphAPIKey)
+		log.Printf("subgraph: 已配置 SUBGRAPH_URL（充值/提现子图 API 可用）")
+	}
+
+	h := &handlers.Handlers{
+		DB:       db,
+		Chain:    ethClient,
+		Counter:  counter,
+		TxKey:    txKey,
+		Subgraph: subClient,
+	}
 	r := router.New(h)
 
 	switch {

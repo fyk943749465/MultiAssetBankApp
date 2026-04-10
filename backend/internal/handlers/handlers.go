@@ -6,16 +6,18 @@ import (
 
 	"go-chain/backend/internal/chain"
 	"go-chain/backend/internal/contracts"
+	"go-chain/backend/internal/subgraph"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 type Handlers struct {
-	DB      *gorm.DB
-	Chain   *chain.Client
-	Counter *contracts.Counter
-	TxKey   *ecdsa.PrivateKey
+	DB       *gorm.DB
+	Chain    *chain.Client
+	Counter  *contracts.Counter
+	TxKey    *ecdsa.PrivateKey
+	Subgraph *subgraph.Client
 }
 
 func (h *Handlers) Health(c *gin.Context) {

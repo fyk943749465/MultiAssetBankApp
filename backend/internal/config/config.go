@@ -16,6 +16,8 @@ type Config struct {
 	EthPrivateKeyHex        string // optional: hex private key for contract writes (keep secret)
 	BankContract            string // optional: MultiAssetBank for event indexer
 	BankIndexerStartBlock   uint64 // optional: first block to scan (0 = use head-2000 on init)
+	SubgraphURL             string // optional: The Graph Studio query URL
+	SubgraphAPIKey          string // optional: Studio API key (Bearer)
 }
 
 func Load() (*Config, error) {
@@ -31,6 +33,8 @@ func Load() (*Config, error) {
 		EthPrivateKeyHex:      os.Getenv("ETH_PRIVATE_KEY"),
 		BankContract:          os.Getenv("BANK_CONTRACT_ADDRESS"),
 		BankIndexerStartBlock: startBlk,
+		SubgraphURL:           os.Getenv("SUBGRAPH_URL"),
+		SubgraphAPIKey:        os.Getenv("SUBGRAPH_API_KEY"),
 	}, nil
 }
 

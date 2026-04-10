@@ -3,7 +3,13 @@ import { useAccount, useReadContract } from "wagmi";
 import { sepolia } from "wagmi/chains";
 import { formatUnits } from "viem";
 import { multiAssetBankAbi } from "../abi/multiAssetBank";
-import { fetchBankDeposits, fetchBankWithdrawals, type BankLedgerRow } from "../api";
+import {
+  fetchBankDeposits,
+  fetchBankSubgraphDeposits,
+  fetchBankSubgraphWithdrawals,
+  fetchBankWithdrawals,
+  type BankLedgerRow,
+} from "../api";
 import { getBankAddress } from "../config/bank";
 import { SEPOLIA_ERC20_PRESETS } from "../config/sepoliaErc20";
 import { btnGhost, sectionTitleAccent, surface } from "../ui/styles";
@@ -39,7 +45,14 @@ function txUrl(hash: string) {
   return `https://sepolia.etherscan.io/tx/${hash}`;
 }
 
+function ledgerRowKey(r: BankLedgerRow): string {
+  if (r.subgraph_entity_id) return r.subgraph_entity_id;
+  return `${r.tx_hash}-${r.log_index ?? 0}`;
+}
+
 const bank = getBankAddress();
+
+type LedgerSource = "database" | "subgraph";
 
 export function BankLedgerHistory() {
   const { address, isConnected } = useAccount();
@@ -50,6 +63,7 @@ export function BankLedgerHistory() {
     chainId: sepolia.id,
     query: { enabled: isConnected },
   });
+  const [source, setSource] = useState<LedgerSource>("database");
   const [deposits, setDeposits] = useState<BankLedgerRow[]>([]);
   const [withdrawals, setWithdrawals] = useState<BankLedgerRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,9 +74,18 @@ export function BankLedgerHistory() {
     setLoading(true);
     setErr(null);
     try {
-      const [d, w] = await Promise.all([fetchBankDeposits(address, 30), fetchBankWithdrawals(address, 30)]);
-      setDeposits(d);
-      setWithdrawals(w);
+      if (source === "database") {
+        const [d, w] = await Promise.all([fetchBankDeposits(address, 30), fetchBankWithdrawals(address, 30)]);
+        setDeposits(d);
+        setWithdrawals(w);
+      } else {
+        const [d, w] = await Promise.all([
+          fetchBankSubgraphDeposits(address, 30),
+          fetchBankSubgraphWithdrawals(address, 30),
+        ]);
+        setDeposits(d);
+        setWithdrawals(w);
+      }
     } catch (e) {
       setDeposits([]);
       setWithdrawals([]);
@@ -70,7 +93,7 @@ export function BankLedgerHistory() {
     } finally {
       setLoading(false);
     }
-  }, [address]);
+  }, [address, source]);
 
   useEffect(() => {
     if (!isConnected || !address) {
@@ -102,16 +125,59 @@ export function BankLedgerHistory() {
           {loading ? "加载中…" : "刷新"}
         </button>
       </div>
+      <div className="mb-4 flex flex-wrap gap-1 rounded-xl border border-slate-800/80 bg-slate-950/40 p-1">
+        <button
+          type="button"
+          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            source === "database"
+              ? "bg-slate-700/90 text-slate-100 shadow-sm"
+              : "text-slate-500 hover:bg-slate-800/60 hover:text-slate-300"
+          }`}
+          onClick={() => setSource("database")}
+        >
+          后端数据库
+        </button>
+        <button
+          type="button"
+          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            source === "subgraph"
+              ? "bg-slate-700/90 text-slate-100 shadow-sm"
+              : "text-slate-500 hover:bg-slate-800/60 hover:text-slate-300"
+          }`}
+          onClick={() => setSource("subgraph")}
+        >
+          The Graph 子图
+        </button>
+      </div>
       <p className="mb-4 font-mono text-xs text-slate-500">
-        数据来源：后端索引库 · <span className="text-slate-400">{address}</span>
+        {source === "database" ? (
+          <>
+            数据来源：<span className="text-slate-400">PostgreSQL（后端索引）</span> ·{" "}
+            <span className="text-slate-400">{address}</span>
+          </>
+        ) : (
+          <>
+            数据来源：<span className="text-slate-400">The Graph（经 Go 后端代理）</span> ·{" "}
+            <span className="text-slate-400">{address}</span>
+          </>
+        )}
       </p>
       {err && (
         <p className="mb-4 rounded-xl border border-red-500/30 bg-red-950/30 px-3 py-2.5 text-sm text-red-300">{err}</p>
       )}
       {!err && !loading && deposits.length === 0 && withdrawals.length === 0 && (
         <p className="text-sm text-slate-400">
-          暂无记录。请确认后端已配置 <span className="font-mono text-slate-300">BANK_CONTRACT_ADDRESS</span>、
-          <span className="font-mono text-slate-300">ETH_RPC_URL</span> 且索引器在运行；新交易需等待数秒再刷新。
+          {source === "database" ? (
+            <>
+              暂无记录。请确认后端已配置 <span className="font-mono text-slate-300">BANK_CONTRACT_ADDRESS</span>、
+              <span className="font-mono text-slate-300">ETH_RPC_URL</span> 且索引器在运行；新交易需等待数秒再刷新。
+            </>
+          ) : (
+            <>
+              暂无记录。请确认后端 <span className="font-mono text-slate-300">SUBGRAPH_URL</span>、
+              <span className="font-mono text-slate-300">SUBGRAPH_API_KEY</span> 已配置，且子图已同步到当前区块；新事件需等待子图索引延迟。
+            </>
+          )}
         </p>
       )}
 
@@ -164,7 +230,7 @@ function LedgerTable({
         <tbody>
           {rows.map((r) => (
             <tr
-              key={`${r.tx_hash}-${r.log_index}`}
+              key={ledgerRowKey(r)}
               className="border-b border-slate-800/50 text-slate-300 transition hover:bg-slate-800/30"
             >
               <td className="py-2.5 pl-3 pr-2 font-mono text-[11px] whitespace-nowrap text-slate-400">

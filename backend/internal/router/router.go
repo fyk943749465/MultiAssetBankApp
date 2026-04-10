@@ -33,6 +33,8 @@ func New(h *handlers.Handlers) *gin.Engine {
 	r.POST("/api/contract/counter/count", h.CounterIncrement)
 	r.GET("/api/bank/deposits", h.BankDeposits)
 	r.GET("/api/bank/withdrawals", h.BankWithdrawals)
+	r.GET("/api/bank/subgraph/deposits", h.BankSubgraphDeposits)
+	r.GET("/api/bank/subgraph/withdrawals", h.BankSubgraphWithdrawals)
 
 	return r
 }

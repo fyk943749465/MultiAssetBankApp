@@ -53,18 +53,20 @@ export function postCounterCount() {
   return postJSON<CounterCountResult>("/api/contract/counter/count");
 }
 
-/** 后端索引的链上充值 / 提现（PostgreSQL） */
+/** 后端索引库或子图返回的充值 / 提现行（字段因来源略有可选差异） */
 export type BankLedgerRow = {
-  id: number;
-  chain_id: number;
+  id?: number;
+  chain_id?: number;
   tx_hash: string;
-  log_index: number;
+  log_index?: number;
   block_number: number;
   block_time: string;
   token_address: string;
   user_address: string;
   amount_raw: string;
-  created_at: string;
+  created_at?: string;
+  /** 子图实体 id，用于 React key；数据库来源时不存在 */
+  subgraph_entity_id?: string;
 };
 
 export async function fetchBankDeposits(user: string, limit = 30): Promise<BankLedgerRow[]> {
@@ -76,5 +78,19 @@ export async function fetchBankDeposits(user: string, limit = 30): Promise<BankL
 export async function fetchBankWithdrawals(user: string, limit = 30): Promise<BankLedgerRow[]> {
   const q = new URLSearchParams({ user, limit: String(limit) });
   const j = await getJSON<{ withdrawals: BankLedgerRow[] }>(`/api/bank/withdrawals?${q}`);
+  return j.withdrawals ?? [];
+}
+
+/** GET /api/bank/subgraph/deposits — Go 后端代理 The Graph */
+export async function fetchBankSubgraphDeposits(user: string, limit = 30): Promise<BankLedgerRow[]> {
+  const q = new URLSearchParams({ user, limit: String(limit) });
+  const j = await getJSON<{ deposits: BankLedgerRow[] }>(`/api/bank/subgraph/deposits?${q}`);
+  return j.deposits ?? [];
+}
+
+/** GET /api/bank/subgraph/withdrawals */
+export async function fetchBankSubgraphWithdrawals(user: string, limit = 30): Promise<BankLedgerRow[]> {
+  const q = new URLSearchParams({ user, limit: String(limit) });
+  const j = await getJSON<{ withdrawals: BankLedgerRow[] }>(`/api/bank/subgraph/withdrawals?${q}`);
   return j.withdrawals ?? [];
 }
