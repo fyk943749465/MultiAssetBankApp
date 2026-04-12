@@ -1,0 +1,181 @@
+type CampaignFinalized @entity(immutable: true) {
+  id: Bytes!
+  campaignId: BigInt! # uint256
+  successful: Boolean! # bool
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type CrowdfundingLaunched @entity(immutable: true) {
+  id: Bytes!
+  proposalId: BigInt! # uint256
+  campaignId: BigInt! # uint256
+  organizer: Bytes! # address
+  githubUrlHash: Bytes! # bytes32
+  githubUrl: String! # string
+  target: BigInt! # uint256
+  deadline: BigInt! # uint256
+  roundIndex: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type DeveloperAdded @entity(immutable: true) {
+  id: Bytes!
+  campaignId: BigInt! # uint256
+  developer: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type DeveloperRemoved @entity(immutable: true) {
+  id: Bytes!
+  campaignId: BigInt! # uint256
+  developer: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Donated @entity(immutable: true) {
+  id: Bytes!
+  campaignId: BigInt! # uint256
+  contributor: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type FundingRoundReviewed @entity(immutable: true) {
+  id: Bytes!
+  proposalId: BigInt! # uint256
+  approved: Boolean! # bool
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type FundingRoundSubmittedForReview @entity(immutable: true) {
+  id: Bytes!
+  proposalId: BigInt! # uint256
+  roundOrdinal: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MilestoneApproved @entity(immutable: true) {
+  id: Bytes!
+  campaignId: BigInt! # uint256
+  milestoneIndex: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MilestoneShareClaimed @entity(immutable: true) {
+  id: Bytes!
+  campaignId: BigInt! # uint256
+  milestoneIndex: BigInt! # uint256
+  developer: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OwnershipTransferred @entity(immutable: true) {
+  id: Bytes!
+  previousOwner: Bytes! # address
+  newOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Paused @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PlatformDonated @entity(immutable: true) {
+  id: Bytes!
+  donor: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PlatformFundsWithdrawn @entity(immutable: true) {
+  id: Bytes!
+  to: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ProposalInitiatorUpdated @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  allowed: Boolean! # bool
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ProposalReviewed @entity(immutable: true) {
+  id: Bytes!
+  proposalId: BigInt! # uint256
+  approved: Boolean! # bool
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ProposalSubmitted @entity(immutable: true) {
+  id: Bytes!
+  proposalId: BigInt! # uint256
+  organizer: Bytes! # address
+  githubUrl: String! # string
+  target: BigInt! # uint256
+  duration: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type RefundClaimed @entity(immutable: true) {
+  id: Bytes!
+  campaignId: BigInt! # uint256
+  contributor: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type StaleFundsSwept @entity(immutable: true) {
+  id: Bytes!
+  campaignId: BigInt! # uint256
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Unpaused @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

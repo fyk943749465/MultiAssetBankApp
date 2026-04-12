@@ -1,0 +1,570 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "REST API: health, chain status, counter contract calls, bank ledger (PostgreSQL indexer + optional The Graph subgraph).",
+        "title": "go-chain API",
+        "contact": {},
+        "version": "0.1.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/api/bank/deposits": {
+            "get": {
+                "description": "Lists `Deposited` events stored by the local bank indexer. Optional filter by user wallet.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank"
+                ],
+                "summary": "Bank deposits (indexed DB)",
+                "parameters": [
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Max rows (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by user address (0x...), case-insensitive match",
+                        "name": "user",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BankDepositsResp"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    },
+                    "503": {
+                        "description": "database not configured",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/bank/subgraph/deposits": {
+            "get": {
+                "description": "Queries the configured subgraph for `Deposited` entities. Requires SUBGRAPH_URL (and optional SUBGRAPH_API_KEY).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank"
+                ],
+                "summary": "Bank deposits (The Graph)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+                        "description": "Wallet address (0x-prefixed)",
+                        "name": "user",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Max rows (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SubgraphDepositsResp"
+                        }
+                    },
+                    "400": {
+                        "description": "missing or invalid user",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    },
+                    "502": {
+                        "description": "subgraph HTTP or parse error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    },
+                    "503": {
+                        "description": "subgraph not configured",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/bank/subgraph/withdrawals": {
+            "get": {
+                "description": "Queries the configured subgraph for `Withdrawn` entities. Requires SUBGRAPH_URL (and optional SUBGRAPH_API_KEY).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank"
+                ],
+                "summary": "Bank withdrawals (The Graph)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+                        "description": "Wallet address (0x-prefixed)",
+                        "name": "user",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Max rows (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SubgraphWithdrawalsResp"
+                        }
+                    },
+                    "400": {
+                        "description": "missing or invalid user",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    },
+                    "502": {
+                        "description": "subgraph HTTP or parse error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    },
+                    "503": {
+                        "description": "subgraph not configured",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/bank/withdrawals": {
+            "get": {
+                "description": "Lists `Withdrawn` events stored by the local bank indexer. Optional filter by user wallet.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank"
+                ],
+                "summary": "Bank withdrawals (indexed DB)",
+                "parameters": [
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Max rows (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by user address (0x...), case-insensitive match",
+                        "name": "user",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BankWithdrawalsResp"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    },
+                    "503": {
+                        "description": "database not configured",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chain/status": {
+            "get": {
+                "description": "When ETH_RPC_URL is configured and dial succeeds, returns `configured: true` and `chain_id`. Otherwise `configured: false` and a short message.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chain"
+                ],
+                "summary": "Chain status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ChainStatusResp"
+                        }
+                    },
+                    "503": {
+                        "description": "e.g. chain id read failed",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/contract/counter/count": {
+            "post": {
+                "description": "Sends an on-chain transaction calling `count()` using ETH_PRIVATE_KEY. Request has **no body**.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contract"
+                ],
+                "summary": "Counter increment (tx)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CounterIncrementResp"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    },
+                    "502": {
+                        "description": "transaction send error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    },
+                    "503": {
+                        "description": "contract, RPC, or private key not configured",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/contract/counter/value": {
+            "get": {
+                "description": "Reads `get()` from the configured counter contract (requires COUNTER_CONTRACT_ADDRESS and ETH_RPC_URL).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contract"
+                ],
+                "summary": "Counter current value",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CounterValueResp"
+                        }
+                    },
+                    "502": {
+                        "description": "RPC / contract call error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    },
+                    "503": {
+                        "description": "contract or RPC not configured",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorJSON"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/info": {
+            "get": {
+                "description": "Returns API name and version string.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "API info",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIInfoResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Returns JSON `{ \"status\": \"ok\" }` when the process is running.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Health",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.HealthResp"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.APIInfoResp": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "go-chain API"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "0.1.0"
+                }
+            }
+        },
+        "handlers.BankDepositsResp": {
+            "type": "object",
+            "properties": {
+                "deposits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BankDeposit"
+                    }
+                }
+            }
+        },
+        "handlers.BankWithdrawalsResp": {
+            "type": "object",
+            "properties": {
+                "withdrawals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BankWithdrawal"
+                    }
+                }
+            }
+        },
+        "handlers.ChainStatusResp": {
+            "type": "object",
+            "properties": {
+                "chain_id": {
+                    "type": "integer"
+                },
+                "configured": {
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CounterIncrementResp": {
+            "type": "object",
+            "properties": {
+                "tx_hash": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CounterValueResp": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ErrorJSON": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.HealthResp": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "ok"
+                }
+            }
+        },
+        "handlers.SubgraphDepositsResp": {
+            "type": "object",
+            "properties": {
+                "deposits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.SubgraphEventRow"
+                    }
+                },
+                "source": {
+                    "type": "string",
+                    "example": "subgraph"
+                }
+            }
+        },
+        "handlers.SubgraphEventRow": {
+            "type": "object",
+            "properties": {
+                "amount_raw": {
+                    "type": "string"
+                },
+                "block_number": {
+                    "type": "integer"
+                },
+                "block_time": {
+                    "type": "string"
+                },
+                "subgraph_entity_id": {
+                    "type": "string"
+                },
+                "token_address": {
+                    "type": "string"
+                },
+                "tx_hash": {
+                    "type": "string"
+                },
+                "user_address": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.SubgraphWithdrawalsResp": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string",
+                    "example": "subgraph"
+                },
+                "withdrawals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.SubgraphEventRow"
+                    }
+                }
+            }
+        },
+        "models.BankDeposit": {
+            "type": "object",
+            "properties": {
+                "amount_raw": {
+                    "type": "string"
+                },
+                "block_number": {
+                    "type": "integer"
+                },
+                "block_time": {
+                    "type": "string"
+                },
+                "chain_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "log_index": {
+                    "type": "integer"
+                },
+                "token_address": {
+                    "type": "string"
+                },
+                "tx_hash": {
+                    "type": "string"
+                },
+                "user_address": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.BankWithdrawal": {
+            "type": "object",
+            "properties": {
+                "amount_raw": {
+                    "type": "string"
+                },
+                "block_number": {
+                    "type": "integer"
+                },
+                "block_time": {
+                    "type": "string"
+                },
+                "chain_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "log_index": {
+                    "type": "integer"
+                },
+                "token_address": {
+                    "type": "string"
+                },
+                "tx_hash": {
+                    "type": "string"
+                },
+                "user_address": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

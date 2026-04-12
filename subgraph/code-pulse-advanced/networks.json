@@ -1,0 +1,8 @@
+{
+  "sepolia": {
+    "CodePulseAdvanced": {
+      "address": "0x3100b1FD5A2180dAc11820106579545D0f1C439b",
+      "startBlock": 10643717
+    }
+  }
+}

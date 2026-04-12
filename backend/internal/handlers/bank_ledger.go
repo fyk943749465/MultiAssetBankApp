@@ -11,6 +11,16 @@ import (
 )
 
 // BankDeposits 查询已索引的充值记录（链上 Deposited 事件）。
+// @Summary      Bank deposits (indexed DB)
+// @Description  Lists `Deposited` events stored by the local bank indexer. Optional filter by user wallet.
+// @Tags         bank
+// @Produce      json
+// @Param        limit query int false "Max rows (default 50, max 200)" default(50) minimum(1) maximum(200)
+// @Param        user  query string false "Filter by user address (0x...), case-insensitive match"
+// @Success      200 {object} BankDepositsResp
+// @Failure      503 {object} ErrorJSON "database not configured"
+// @Failure      500 {object} ErrorJSON
+// @Router       /api/bank/deposits [get]
 func (h *Handlers) BankDeposits(c *gin.Context) {
 	if h.DB == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database not configured"})
@@ -35,6 +45,16 @@ func (h *Handlers) BankDeposits(c *gin.Context) {
 }
 
 // BankWithdrawals 查询已索引的提现记录（链上 Withdrawn 事件）。
+// @Summary      Bank withdrawals (indexed DB)
+// @Description  Lists `Withdrawn` events stored by the local bank indexer. Optional filter by user wallet.
+// @Tags         bank
+// @Produce      json
+// @Param        limit query int false "Max rows (default 50, max 200)" default(50) minimum(1) maximum(200)
+// @Param        user  query string false "Filter by user address (0x...), case-insensitive match"
+// @Success      200 {object} BankWithdrawalsResp
+// @Failure      503 {object} ErrorJSON "database not configured"
+// @Failure      500 {object} ErrorJSON
+// @Router       /api/bank/withdrawals [get]
 func (h *Handlers) BankWithdrawals(c *gin.Context) {
 	if h.DB == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database not configured"})

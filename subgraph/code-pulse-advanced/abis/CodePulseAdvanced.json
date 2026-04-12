@@ -1,0 +1,983 @@
+[
+  { "type": "constructor", "inputs": [], "stateMutability": "nonpayable" },
+  { "name": "AlreadyApproved", "type": "error", "inputs": [] },
+  { "name": "AlreadyClaimed", "type": "error", "inputs": [] },
+  { "name": "AlreadyDeveloper", "type": "error", "inputs": [] },
+  { "name": "AlreadyFinalized", "type": "error", "inputs": [] },
+  { "name": "AlreadySwept", "type": "error", "inputs": [] },
+  { "name": "BadMilestoneIndex", "type": "error", "inputs": [] },
+  { "name": "BadState", "type": "error", "inputs": [] },
+  { "name": "CampaignDormant", "type": "error", "inputs": [] },
+  { "name": "CampaignEnded", "type": "error", "inputs": [] },
+  { "name": "CannotManageDevelopers", "type": "error", "inputs": [] },
+  { "name": "DurationBelowMinimum", "type": "error", "inputs": [] },
+  { "name": "EmptyGithubUrl", "type": "error", "inputs": [] },
+  {
+    "name": "EmptyMilestoneDescription",
+    "type": "error",
+    "inputs": [{ "name": "index", "type": "uint8", "internalType": "uint8" }]
+  },
+  { "name": "EnforcedPause", "type": "error", "inputs": [] },
+  { "name": "ExceedsPlatformBalance", "type": "error", "inputs": [] },
+  { "name": "ExpectedPause", "type": "error", "inputs": [] },
+  { "name": "FirstRoundAlreadyLaunched", "type": "error", "inputs": [] },
+  { "name": "FollowOnRequiresPriorRound", "type": "error", "inputs": [] },
+  { "name": "FundingRoundNotApprovedForLaunch", "type": "error", "inputs": [] },
+  { "name": "FundingRoundReviewInProgress", "type": "error", "inputs": [] },
+  { "name": "GithubUrlTooLong", "type": "error", "inputs": [] },
+  { "name": "IncorrectMilestoneCount", "type": "error", "inputs": [] },
+  { "name": "InvalidAccount", "type": "error", "inputs": [] },
+  { "name": "InvalidCampaign", "type": "error", "inputs": [] },
+  { "name": "InvalidProposal", "type": "error", "inputs": [] },
+  { "name": "MilestoneLocked", "type": "error", "inputs": [] },
+  { "name": "MilestoneNotApproved", "type": "error", "inputs": [] },
+  { "name": "MilestoneSettled", "type": "error", "inputs": [] },
+  { "name": "NoContribution", "type": "error", "inputs": [] },
+  { "name": "NoDevelopers", "type": "error", "inputs": [] },
+  { "name": "NoETH", "type": "error", "inputs": [] },
+  { "name": "NoPendingFundingRound", "type": "error", "inputs": [] },
+  { "name": "NoSnapshot", "type": "error", "inputs": [] },
+  { "name": "NotADeveloper", "type": "error", "inputs": [] },
+  { "name": "NotFinalized", "type": "error", "inputs": [] },
+  { "name": "NotInFundraising", "type": "error", "inputs": [] },
+  { "name": "NotProposalInitiator", "type": "error", "inputs": [] },
+  { "name": "NotReachedDeadline", "type": "error", "inputs": [] },
+  { "name": "NotSnapshotDeveloper", "type": "error", "inputs": [] },
+  { "name": "NotSuccessful", "type": "error", "inputs": [] },
+  { "name": "NothingToSweep", "type": "error", "inputs": [] },
+  { "name": "OnlyOrganizer", "type": "error", "inputs": [] },
+  {
+    "name": "OwnableInvalidOwner",
+    "type": "error",
+    "inputs": [
+      { "name": "owner", "type": "address", "internalType": "address" }
+    ]
+  },
+  {
+    "name": "OwnableUnauthorizedAccount",
+    "type": "error",
+    "inputs": [
+      { "name": "account", "type": "address", "internalType": "address" }
+    ]
+  },
+  { "name": "PreviousMilestoneNotApproved", "type": "error", "inputs": [] },
+  { "name": "PriorRoundNotSettled", "type": "error", "inputs": [] },
+  { "name": "ProposalNotApproved", "type": "error", "inputs": [] },
+  { "name": "ProposalNotPending", "type": "error", "inputs": [] },
+  { "name": "ReentrancyGuardReentrantCall", "type": "error", "inputs": [] },
+  { "name": "RefundNotAvailable", "type": "error", "inputs": [] },
+  { "name": "TargetBelowMinimum", "type": "error", "inputs": [] },
+  { "name": "TooEarly", "type": "error", "inputs": [] },
+  { "name": "TooManyDevelopers", "type": "error", "inputs": [] },
+  { "name": "TransferFailed", "type": "error", "inputs": [] },
+  { "name": "ZeroValue", "type": "error", "inputs": [] },
+  { "name": "ZeroWithdrawAmount", "type": "error", "inputs": [] },
+  {
+    "name": "CampaignFinalized",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "successful",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "CrowdfundingLaunched",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "proposalId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "organizer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "githubUrlHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "githubUrl",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "target",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "roundIndex",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "DeveloperAdded",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "developer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "DeveloperRemoved",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "developer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Donated",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "contributor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "FundingRoundReviewed",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "proposalId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "approved",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "FundingRoundSubmittedForReview",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "proposalId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "roundOrdinal",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "MilestoneApproved",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "milestoneIndex",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "MilestoneShareClaimed",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "milestoneIndex",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "developer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "OwnershipTransferred",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Paused",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "PlatformDonated",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "donor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "PlatformFundsWithdrawn",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "ProposalInitiatorUpdated",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "allowed",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "ProposalReviewed",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "proposalId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "approved",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "ProposalSubmitted",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "proposalId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "organizer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "githubUrl",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "target",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "duration",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "RefundClaimed",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "contributor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "StaleFundsSwept",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Unpaused",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "MAX_DEVELOPERS_PER_CAMPAIGN",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "MAX_GITHUB_URL_LENGTH",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "MILESTONE_NUM",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint8", "internalType": "uint8" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "MIN_CAMPAIGN_DURATION",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "MIN_CAMPAIGN_TARGET",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "STALE_FUNDS_SWEEP_DELAY",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "addCampaignDeveloper",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" },
+      { "name": "account", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "approveMilestone",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" },
+      { "name": "mIndex", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "campaignCount",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "campaigns",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [
+      { "name": "proposalId", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "organizer",
+        "type": "address",
+        "internalType": "address payable"
+      },
+      { "name": "githubUrl", "type": "string", "internalType": "string" },
+      { "name": "target", "type": "uint256", "internalType": "uint256" },
+      { "name": "deadline", "type": "uint256", "internalType": "uint256" },
+      { "name": "amountRaised", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "totalWithdrawn",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "state",
+        "type": "uint8",
+        "internalType": "enum CodePulseAdvanced.CampaignState"
+      },
+      { "name": "finalizedAt", "type": "uint64", "internalType": "uint64" },
+      {
+        "name": "unclaimedRefundPool",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      { "name": "dormantFundsSwept", "type": "bool", "internalType": "bool" },
+      { "name": "successAt", "type": "uint64", "internalType": "uint64" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "claimMilestoneShare",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" },
+      { "name": "mIndex", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "claimRefund",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "contributions",
+    "type": "function",
+    "inputs": [
+      { "name": "", "type": "uint256", "internalType": "uint256" },
+      { "name": "", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "donate",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "name": "donateToPlatform",
+    "type": "function",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "name": "finalizeCampaign",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "getCampaignDeveloperAt",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" },
+      { "name": "index", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getCampaignDeveloperCount",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getMilestoneUnlockTime",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" },
+      { "name": "mIndex", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getProposalCampaignAt",
+    "type": "function",
+    "inputs": [
+      { "name": "proposalId", "type": "uint256", "internalType": "uint256" },
+      { "name": "roundIndex", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getProposalRoundCount",
+    "type": "function",
+    "inputs": [
+      { "name": "proposalId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "isCampaignDeveloper",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" },
+      { "name": "account", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "isProposalInitiator",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "launchApprovedRound",
+    "type": "function",
+    "inputs": [
+      { "name": "proposalId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "milestoneUnlockDelay",
+    "type": "function",
+    "inputs": [
+      { "name": "mIndex", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "pure"
+  },
+  {
+    "name": "milestones",
+    "type": "function",
+    "inputs": [
+      { "name": "", "type": "uint256", "internalType": "uint256" },
+      { "name": "", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      { "name": "description", "type": "string", "internalType": "string" },
+      { "name": "percentage", "type": "uint256", "internalType": "uint256" },
+      { "name": "approved", "type": "bool", "internalType": "bool" },
+      { "name": "claimed", "type": "bool", "internalType": "bool" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "owner",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "pause",
+    "type": "function",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "paused",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "pendingFundingRound",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [
+      { "name": "target", "type": "uint256", "internalType": "uint256" },
+      { "name": "duration", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "pendingRoundMilestones",
+    "type": "function",
+    "inputs": [
+      { "name": "", "type": "uint256", "internalType": "uint256" },
+      { "name": "", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      { "name": "description", "type": "string", "internalType": "string" },
+      { "name": "percentage", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "platformDonationsBalance",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "proposalCount",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "proposalMilestones",
+    "type": "function",
+    "inputs": [
+      { "name": "", "type": "uint256", "internalType": "uint256" },
+      { "name": "", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      { "name": "description", "type": "string", "internalType": "string" },
+      { "name": "percentage", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "proposals",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [
+      { "name": "organizer", "type": "address", "internalType": "address" },
+      { "name": "githubUrl", "type": "string", "internalType": "string" },
+      { "name": "target", "type": "uint256", "internalType": "uint256" },
+      { "name": "duration", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "status",
+        "type": "uint8",
+        "internalType": "enum CodePulseAdvanced.ProposalStatus"
+      },
+      { "name": "lastCampaignId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "removeCampaignDeveloper",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" },
+      { "name": "account", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "renounceOwnership",
+    "type": "function",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "reviewFundingRound",
+    "type": "function",
+    "inputs": [
+      { "name": "proposalId", "type": "uint256", "internalType": "uint256" },
+      { "name": "approve_", "type": "bool", "internalType": "bool" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "reviewProposal",
+    "type": "function",
+    "inputs": [
+      { "name": "proposalId", "type": "uint256", "internalType": "uint256" },
+      { "name": "approve_", "type": "bool", "internalType": "bool" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "roundReviewState",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "enum CodePulseAdvanced.RoundReviewState"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "setProposalInitiator",
+    "type": "function",
+    "inputs": [
+      { "name": "account", "type": "address", "internalType": "address" },
+      { "name": "allowed", "type": "bool", "internalType": "bool" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "submitFirstRoundForReview",
+    "type": "function",
+    "inputs": [
+      { "name": "proposalId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "submitFollowOnRoundForReview",
+    "type": "function",
+    "inputs": [
+      { "name": "proposalId", "type": "uint256", "internalType": "uint256" },
+      { "name": "target_", "type": "uint256", "internalType": "uint256" },
+      { "name": "duration_", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "milestoneDescs",
+        "type": "string[]",
+        "internalType": "string[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "submitProposal",
+    "type": "function",
+    "inputs": [
+      { "name": "githubUrl", "type": "string", "internalType": "string" },
+      { "name": "target_", "type": "uint256", "internalType": "uint256" },
+      { "name": "duration_", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "milestoneDescs",
+        "type": "string[]",
+        "internalType": "string[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "sweepStaleFunds",
+    "type": "function",
+    "inputs": [
+      { "name": "campaignId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "transferOwnership",
+    "type": "function",
+    "inputs": [
+      { "name": "newOwner", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "unpause",
+    "type": "function",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "withdrawPlatformFunds",
+    "type": "function",
+    "inputs": [
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]

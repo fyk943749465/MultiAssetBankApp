@@ -4,6 +4,8 @@ import (
 	"go-chain/backend/internal/handlers"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func devCORS() gin.HandlerFunc {
@@ -25,6 +27,10 @@ func devCORS() gin.HandlerFunc {
 func New(h *handlers.Handlers) *gin.Engine {
 	r := gin.Default()
 	r.Use(devCORS())
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/docs", ReDoc)
+	r.GET("/scalar", Scalar)
 
 	r.GET("/health", h.Health)
 	r.GET("/api/info", h.APIInfo)

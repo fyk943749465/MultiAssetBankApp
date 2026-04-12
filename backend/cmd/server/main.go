@@ -1,3 +1,9 @@
+// @title           go-chain API
+// @version         0.1.0
+// @description     REST API: health, chain status, counter contract calls, bank ledger (PostgreSQL indexer + optional The Graph subgraph).
+// @BasePath        /
+//go:generate go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -d .,../../internal/handlers -g main.go -o ../../docs --parseDependency --parseInternal
+
 package main
 
 import (
@@ -5,6 +11,8 @@ import (
 	"crypto/ecdsa"
 	"log"
 	"strings"
+
+	_ "go-chain/backend/docs"
 
 	"go-chain/backend/internal/chain"
 	"go-chain/backend/internal/config"
@@ -35,7 +43,8 @@ func main() {
 
 	ethClient, err := chain.Dial(cfg.EthRPCURL)
 	if err != nil {
-		log.Printf("chain: optional RPC not available: %v", err)
+		log.Printf("chain: ETH_RPC_URL 已配置但连接失败，链上接口与 bank 索引将不可用: %v", err)
+		ethClient = nil
 	}
 	if ethClient != nil {
 		defer ethClient.Close()
@@ -61,7 +70,8 @@ func main() {
 		k = strings.TrimPrefix(strings.TrimPrefix(k, "0x"), "0X")
 		pk, errPK := crypto.HexToECDSA(k)
 		if errPK != nil {
-			log.Printf("ETH_PRIVATE_KEY invalid: %v", errPK)
+			//log.Printf("ETH_PRIVATE_KEY invalid: %v", errPK)
+			log.Printf("ETH_PRIVATE_KEY invalid")
 		} else {
 			txKey = pk
 		}
@@ -84,9 +94,9 @@ func main() {
 
 	switch {
 	case ethClient == nil:
-		log.Print("bank indexer: 未启动（ETH_RPC_URL 未配置或无法连接节点，请检查 .env 与网络）")
+		log.Printf("bank indexer: 未启动（ETH_RPC_URL 未配置或无法连接节点，请检查 .env 与网络）")
 	case strings.TrimSpace(cfg.BankContract) == "":
-		log.Print("bank indexer: 未启动（未设置 BANK_CONTRACT_ADDRESS）")
+		log.Printf("bank indexer: 未启动（未设置 BANK_CONTRACT_ADDRESS）")
 	default:
 		if !common.IsHexAddress(cfg.BankContract) {
 			log.Printf("bank indexer: 未启动（BANK_CONTRACT_ADDRESS 不是合法 0x 地址）")

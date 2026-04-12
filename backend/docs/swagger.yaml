@@ -1,0 +1,386 @@
+basePath: /
+definitions:
+  handlers.APIInfoResp:
+    properties:
+      name:
+        example: go-chain API
+        type: string
+      version:
+        example: 0.1.0
+        type: string
+    type: object
+  handlers.BankDepositsResp:
+    properties:
+      deposits:
+        items:
+          $ref: '#/definitions/models.BankDeposit'
+        type: array
+    type: object
+  handlers.BankWithdrawalsResp:
+    properties:
+      withdrawals:
+        items:
+          $ref: '#/definitions/models.BankWithdrawal'
+        type: array
+    type: object
+  handlers.ChainStatusResp:
+    properties:
+      chain_id:
+        type: integer
+      configured:
+        type: boolean
+      message:
+        type: string
+    type: object
+  handlers.CounterIncrementResp:
+    properties:
+      tx_hash:
+        type: string
+    type: object
+  handlers.CounterValueResp:
+    properties:
+      value:
+        type: string
+    type: object
+  handlers.ErrorJSON:
+    properties:
+      error:
+        type: string
+    type: object
+  handlers.HealthResp:
+    properties:
+      status:
+        example: ok
+        type: string
+    type: object
+  handlers.SubgraphDepositsResp:
+    properties:
+      deposits:
+        items:
+          $ref: '#/definitions/handlers.SubgraphEventRow'
+        type: array
+      source:
+        example: subgraph
+        type: string
+    type: object
+  handlers.SubgraphEventRow:
+    properties:
+      amount_raw:
+        type: string
+      block_number:
+        type: integer
+      block_time:
+        type: string
+      subgraph_entity_id:
+        type: string
+      token_address:
+        type: string
+      tx_hash:
+        type: string
+      user_address:
+        type: string
+    type: object
+  handlers.SubgraphWithdrawalsResp:
+    properties:
+      source:
+        example: subgraph
+        type: string
+      withdrawals:
+        items:
+          $ref: '#/definitions/handlers.SubgraphEventRow'
+        type: array
+    type: object
+  models.BankDeposit:
+    properties:
+      amount_raw:
+        type: string
+      block_number:
+        type: integer
+      block_time:
+        type: string
+      chain_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      log_index:
+        type: integer
+      token_address:
+        type: string
+      tx_hash:
+        type: string
+      user_address:
+        type: string
+    type: object
+  models.BankWithdrawal:
+    properties:
+      amount_raw:
+        type: string
+      block_number:
+        type: integer
+      block_time:
+        type: string
+      chain_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      log_index:
+        type: integer
+      token_address:
+        type: string
+      tx_hash:
+        type: string
+      user_address:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: 'REST API: health, chain status, counter contract calls, bank ledger
+    (PostgreSQL indexer + optional The Graph subgraph).'
+  title: go-chain API
+  version: 0.1.0
+paths:
+  /api/bank/deposits:
+    get:
+      description: Lists `Deposited` events stored by the local bank indexer. Optional
+        filter by user wallet.
+      parameters:
+      - default: 50
+        description: Max rows (default 50, max 200)
+        in: query
+        maximum: 200
+        minimum: 1
+        name: limit
+        type: integer
+      - description: Filter by user address (0x...), case-insensitive match
+        in: query
+        name: user
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BankDepositsResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+        "503":
+          description: database not configured
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+      summary: Bank deposits (indexed DB)
+      tags:
+      - bank
+  /api/bank/subgraph/deposits:
+    get:
+      description: Queries the configured subgraph for `Deposited` entities. Requires
+        SUBGRAPH_URL (and optional SUBGRAPH_API_KEY).
+      parameters:
+      - description: Wallet address (0x-prefixed)
+        example: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
+        in: query
+        name: user
+        required: true
+        type: string
+      - default: 50
+        description: Max rows (default 50, max 200)
+        in: query
+        maximum: 200
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SubgraphDepositsResp'
+        "400":
+          description: missing or invalid user
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+        "502":
+          description: subgraph HTTP or parse error
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+        "503":
+          description: subgraph not configured
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+      summary: Bank deposits (The Graph)
+      tags:
+      - bank
+  /api/bank/subgraph/withdrawals:
+    get:
+      description: Queries the configured subgraph for `Withdrawn` entities. Requires
+        SUBGRAPH_URL (and optional SUBGRAPH_API_KEY).
+      parameters:
+      - description: Wallet address (0x-prefixed)
+        example: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
+        in: query
+        name: user
+        required: true
+        type: string
+      - default: 50
+        description: Max rows (default 50, max 200)
+        in: query
+        maximum: 200
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SubgraphWithdrawalsResp'
+        "400":
+          description: missing or invalid user
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+        "502":
+          description: subgraph HTTP or parse error
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+        "503":
+          description: subgraph not configured
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+      summary: Bank withdrawals (The Graph)
+      tags:
+      - bank
+  /api/bank/withdrawals:
+    get:
+      description: Lists `Withdrawn` events stored by the local bank indexer. Optional
+        filter by user wallet.
+      parameters:
+      - default: 50
+        description: Max rows (default 50, max 200)
+        in: query
+        maximum: 200
+        minimum: 1
+        name: limit
+        type: integer
+      - description: Filter by user address (0x...), case-insensitive match
+        in: query
+        name: user
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BankWithdrawalsResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+        "503":
+          description: database not configured
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+      summary: Bank withdrawals (indexed DB)
+      tags:
+      - bank
+  /api/chain/status:
+    get:
+      description: 'When ETH_RPC_URL is configured and dial succeeds, returns `configured:
+        true` and `chain_id`. Otherwise `configured: false` and a short message.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ChainStatusResp'
+        "503":
+          description: e.g. chain id read failed
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+      summary: Chain status
+      tags:
+      - chain
+  /api/contract/counter/count:
+    post:
+      description: Sends an on-chain transaction calling `count()` using ETH_PRIVATE_KEY.
+        Request has **no body**.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CounterIncrementResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+        "502":
+          description: transaction send error
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+        "503":
+          description: contract, RPC, or private key not configured
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+      summary: Counter increment (tx)
+      tags:
+      - contract
+  /api/contract/counter/value:
+    get:
+      description: Reads `get()` from the configured counter contract (requires COUNTER_CONTRACT_ADDRESS
+        and ETH_RPC_URL).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CounterValueResp'
+        "502":
+          description: RPC / contract call error
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+        "503":
+          description: contract or RPC not configured
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+      summary: Counter current value
+      tags:
+      - contract
+  /api/info:
+    get:
+      description: Returns API name and version string.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.APIInfoResp'
+      summary: API info
+      tags:
+      - system
+  /health:
+    get:
+      description: 'Returns JSON `{ "status": "ok" }` when the process is running.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.HealthResp'
+      summary: Health
+      tags:
+      - system
+swagger: "2.0"

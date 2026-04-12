@@ -7,6 +7,13 @@ import (
 )
 
 // ChainStatus returns chain connectivity info when ETH_RPC_URL is set.
+// @Summary      Chain status
+// @Description  When ETH_RPC_URL is configured and dial succeeds, returns `configured: true` and `chain_id`. Otherwise `configured: false` and a short message.
+// @Tags         chain
+// @Produce      json
+// @Success      200 {object} ChainStatusResp
+// @Failure      503 {object} ErrorJSON "e.g. chain id read failed"
+// @Router       /api/chain/status [get]
 func (h *Handlers) ChainStatus(c *gin.Context) {
 	if h.Chain == nil || h.Chain.Eth() == nil {
 		c.JSON(http.StatusOK, gin.H{

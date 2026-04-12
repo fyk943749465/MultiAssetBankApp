@@ -8,6 +8,14 @@ import (
 )
 
 // CounterValue calls view function get().
+// @Summary      Counter current value
+// @Description  Reads `get()` from the configured counter contract (requires COUNTER_CONTRACT_ADDRESS and ETH_RPC_URL).
+// @Tags         contract
+// @Produce      json
+// @Success      200 {object} CounterValueResp
+// @Failure      503 {object} ErrorJSON "contract or RPC not configured"
+// @Failure      502 {object} ErrorJSON "RPC / contract call error"
+// @Router       /api/contract/counter/value [get]
 func (h *Handlers) CounterValue(c *gin.Context) {
 	if h.Counter == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "counter contract not configured (set COUNTER_CONTRACT_ADDRESS)"})
@@ -26,6 +34,15 @@ func (h *Handlers) CounterValue(c *gin.Context) {
 }
 
 // CounterIncrement sends a transaction calling count().
+// @Summary      Counter increment (tx)
+// @Description  Sends an on-chain transaction calling `count()` using ETH_PRIVATE_KEY. Request has **no body**.
+// @Tags         contract
+// @Produce      json
+// @Success      200 {object} CounterIncrementResp
+// @Failure      503 {object} ErrorJSON "contract, RPC, or private key not configured"
+// @Failure      502 {object} ErrorJSON "transaction send error"
+// @Failure      500 {object} ErrorJSON
+// @Router       /api/contract/counter/count [post]
 func (h *Handlers) CounterIncrement(c *gin.Context) {
 	if h.Counter == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "counter contract not configured (set COUNTER_CONTRACT_ADDRESS)"})

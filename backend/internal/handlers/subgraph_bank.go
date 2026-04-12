@@ -48,7 +48,7 @@ query BankWithdrawals($first: Int!, $user: Bytes) {
   }
 }`
 
-type subgraphEventRow struct {
+type SubgraphEventRow struct {
 	SubgraphEntityID string `json:"subgraph_entity_id"`
 	TokenAddress     string `json:"token_address"`
 	UserAddress      string `json:"user_address"`
@@ -88,6 +88,17 @@ func (h *Handlers) bankSubgraphLimit(c *gin.Context) int {
 }
 
 // BankSubgraphDeposits returns Deposited events from The Graph (same contract as indexer).
+// @Summary      Bank deposits (The Graph)
+// @Description  Queries the configured subgraph for `Deposited` entities. Requires SUBGRAPH_URL (and optional SUBGRAPH_API_KEY).
+// @Tags         bank
+// @Produce      json
+// @Param        user  query string true "Wallet address (0x-prefixed)" example(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045)
+// @Param        limit query int false "Max rows (default 50, max 200)" default(50) minimum(1) maximum(200)
+// @Success      200 {object} SubgraphDepositsResp
+// @Failure      400 {object} ErrorJSON "missing or invalid user"
+// @Failure      503 {object} ErrorJSON "subgraph not configured"
+// @Failure      502 {object} ErrorJSON "subgraph HTTP or parse error"
+// @Router       /api/bank/subgraph/deposits [get]
 func (h *Handlers) BankSubgraphDeposits(c *gin.Context) {
 	if h.Subgraph == nil || !h.Subgraph.Configured() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -129,6 +140,17 @@ func (h *Handlers) BankSubgraphDeposits(c *gin.Context) {
 }
 
 // BankSubgraphWithdrawals returns Withdrawn events from The Graph.
+// @Summary      Bank withdrawals (The Graph)
+// @Description  Queries the configured subgraph for `Withdrawn` entities. Requires SUBGRAPH_URL (and optional SUBGRAPH_API_KEY).
+// @Tags         bank
+// @Produce      json
+// @Param        user  query string true "Wallet address (0x-prefixed)" example(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045)
+// @Param        limit query int false "Max rows (default 50, max 200)" default(50) minimum(1) maximum(200)
+// @Success      200 {object} SubgraphWithdrawalsResp
+// @Failure      400 {object} ErrorJSON "missing or invalid user"
+// @Failure      503 {object} ErrorJSON "subgraph not configured"
+// @Failure      502 {object} ErrorJSON "subgraph HTTP or parse error"
+// @Router       /api/bank/subgraph/withdrawals [get]
 func (h *Handlers) BankSubgraphWithdrawals(c *gin.Context) {
 	if h.Subgraph == nil || !h.Subgraph.Configured() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -169,8 +191,8 @@ func (h *Handlers) BankSubgraphWithdrawals(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"withdrawals": rows, "source": "subgraph"})
 }
 
-func mapSubgraphEvents(in []subgraphEventJSON) ([]subgraphEventRow, error) {
-	out := make([]subgraphEventRow, 0, len(in))
+func mapSubgraphEvents(in []subgraphEventJSON) ([]SubgraphEventRow, error) {
+	out := make([]SubgraphEventRow, 0, len(in))
 	for _, e := range in {
 		row, err := mapOneSubgraphEvent(e)
 		if err != nil {
@@ -181,37 +203,37 @@ func mapSubgraphEvents(in []subgraphEventJSON) ([]subgraphEventRow, error) {
 	return out, nil
 }
 
-func mapOneSubgraphEvent(e subgraphEventJSON) (subgraphEventRow, error) {
-	var row subgraphEventRow
+func mapOneSubgraphEvent(e subgraphEventJSON) (SubgraphEventRow, error) {
+	var row SubgraphEventRow
 	row.SubgraphEntityID = e.ID
 	row.TokenAddress = normalizeHexAddr(e.Token)
 	row.UserAddress = normalizeHexAddr(e.User)
 	row.TxHash = normalizeHexHash(e.TransactionHash)
 	if e.Amount == "" {
-		return subgraphEventRow{}, fmt.Errorf("empty amount")
+		return SubgraphEventRow{}, fmt.Errorf("empty amount")
 	}
 	if _, ok := new(big.Int).SetString(e.Amount, 10); !ok {
-		return subgraphEventRow{}, fmt.Errorf("invalid amount: %q", e.Amount)
+		return SubgraphEventRow{}, fmt.Errorf("invalid amount: %q", e.Amount)
 	}
 	row.AmountRaw = e.Amount
 
 	bn := strings.TrimSpace(e.BlockNumber)
 	if bn == "" {
-		return subgraphEventRow{}, fmt.Errorf("empty blockNumber")
+		return SubgraphEventRow{}, fmt.Errorf("empty blockNumber")
 	}
 	u, err := strconv.ParseUint(bn, 10, 64)
 	if err != nil {
-		return subgraphEventRow{}, fmt.Errorf("blockNumber: %w", err)
+		return SubgraphEventRow{}, fmt.Errorf("blockNumber: %w", err)
 	}
 	row.BlockNumber = u
 
 	ts := strings.TrimSpace(e.BlockTimestamp)
 	if ts == "" {
-		return subgraphEventRow{}, fmt.Errorf("empty blockTimestamp")
+		return SubgraphEventRow{}, fmt.Errorf("empty blockTimestamp")
 	}
 	sec, err := strconv.ParseInt(ts, 10, 64)
 	if err != nil {
-		return subgraphEventRow{}, fmt.Errorf("blockTimestamp: %w", err)
+		return SubgraphEventRow{}, fmt.Errorf("blockTimestamp: %w", err)
 	}
 	row.BlockTime = time.Unix(sec, 0).UTC().Format(time.RFC3339Nano)
 
