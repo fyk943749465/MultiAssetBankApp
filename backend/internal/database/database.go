@@ -21,10 +21,27 @@ func Connect(dsn string) (*gorm.DB, error) {
 		return nil, err
 	}
 	if err := db.AutoMigrate(
+		// bank
 		&models.Example{},
 		&models.BankDeposit{},
 		&models.BankWithdrawal{},
 		&models.ChainIndexerCursor{},
+		// code pulse
+		&models.CPProposal{},
+		&models.CPCampaign{},
+		&models.CPContribution{},
+		&models.CPProposalMilestone{},
+		&models.CPCampaignMilestone{},
+		&models.CPCampaignDeveloper{},
+		&models.CPMilestoneClaim{},
+		&models.CPEventLog{},
+		&models.CPSyncCursor{},
+		&models.CPSystemState{},
+		&models.CPWalletProfile{},
+		&models.CPWalletRole{},
+		&models.CPTxAttempt{},
+		&models.CPPlatformFundMovement{},
+		&models.CPSnapshotDaily{},
 	); err != nil {
 		return nil, err
 	}

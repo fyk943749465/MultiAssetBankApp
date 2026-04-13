@@ -1,36 +1,42 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { ConnectWallet } from "../components/ConnectWallet";
-import { btnGhost, code } from "../ui/styles";
+import { ConnectWallet } from "@/components/ConnectWallet";
+import { ModeToggle } from "@/components/mode-toggle";
+import { cn } from "@/lib/utils";
 
 function navClass({ isActive }: { isActive: boolean }): string {
-  const base = btnGhost;
-  if (isActive) {
-    return `${base} border-emerald-500/45 bg-emerald-950/35 text-emerald-100`;
-  }
-  return `${base} text-slate-400`;
+  return cn(
+    "relative rounded-xl px-6 py-2.5 text-sm font-medium transition-all duration-300",
+    isActive
+      ? "text-foreground bg-primary/10 shadow-[0_0_15px_rgba(45,212,191,0.15)] ring-1 ring-primary/20"
+      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+  );
 }
-
 export function AppLayout() {
   return (
-    <div className="mx-auto min-h-screen max-w-5xl px-4 pb-16 pt-6 sm:px-6 sm:pt-8 lg:px-8">
-      <header className="mb-8 sm:mb-10">
-        <div className="mb-4 flex justify-end sm:mb-5">
-          <ConnectWallet compact />
-        </div>
+    <div className="relative flex min-h-screen flex-col selection:bg-primary/20">
+      {/* Absolute Top-Right Controls */}
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+        <ModeToggle />
+        <ConnectWallet compact />
+      </div>
 
-        <div className="text-center">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-500/80">
+      <main className="mx-auto w-full max-w-5xl px-4 flex-1 pb-24 pt-16 sm:px-6 sm:pt-20 lg:px-8">
+        <div className="relative mb-16 text-center">
+          {/* Subtle glow behind title */}
+          <div className="absolute left-1/2 top-1/2 -z-10 h-[120px] w-[60%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 opacity-50 blur-[80px]"></div>
+          
+          <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.4em] text-primary/80">
             Sepolia · Wagmi · Viem
           </p>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            <span className="text-gradient-brand">GO-CHAIN</span>
+          <h1 className="text-5xl font-extrabold tracking-tight sm:text-7xl">
+            <span className="text-gradient-brand drop-shadow-sm">GO-CHAIN</span>
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-slate-400">
-            多业务入口：各模块页面相互独立；<span className="text-slate-300">钱包</span>在右上角，全站共用。
+          <p className="mx-auto mt-6 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
+            多业务入口：各模块页面相互独立；<span className="text-foreground font-medium">钱包</span>在右上角，全站共用。
           </p>
 
           <nav
-            className="mx-auto mt-8 flex max-w-md flex-wrap items-center justify-center gap-2"
+            className="mx-auto mt-10 inline-flex flex-wrap items-center justify-center gap-2 rounded-[20px] glass-panel p-2.5"
             aria-label="业务模块"
           >
             <NavLink to="/bank" className={navClass}>
@@ -41,14 +47,19 @@ export function AppLayout() {
             </NavLink>
           </nav>
         </div>
-      </header>
 
-      <main>
-        <Outlet />
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <Outlet />
+        </div>
       </main>
 
-      <footer className="mt-14 border-t border-slate-800/80 pt-8 text-center text-xs text-slate-600">
-        GO-CHAIN · 本地开发请使用系统浏览器打开前端地址以使用 <code className={code}>window.ethereum</code>
+      <footer className="mt-auto border-t border-white/5 bg-background/40 backdrop-blur-md py-8 text-center text-xs text-muted-foreground">
+        <p className="opacity-80">
+          GO-CHAIN · 本地开发请使用系统浏览器打开前端地址以使用{" "}
+          <code className="rounded border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[10px]">
+            window.ethereum
+          </code>
+        </p>
       </footer>
     </div>
   );

@@ -2,6 +2,11 @@ package router
 
 import (
 	"go-chain/backend/internal/handlers"
+	hbank "go-chain/backend/internal/handlers/bank"
+	hchain "go-chain/backend/internal/handlers/chain"
+	hcp "go-chain/backend/internal/handlers/codepulse"
+	hctr "go-chain/backend/internal/handlers/contract"
+	hsys "go-chain/backend/internal/handlers/system"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -32,15 +37,17 @@ func New(h *handlers.Handlers) *gin.Engine {
 	r.GET("/docs", ReDoc)
 	r.GET("/scalar", Scalar)
 
-	r.GET("/health", h.Health)
-	r.GET("/api/info", h.APIInfo)
-	r.GET("/api/chain/status", h.ChainStatus)
-	r.GET("/api/contract/counter/value", h.CounterValue)
-	r.POST("/api/contract/counter/count", h.CounterIncrement)
-	r.GET("/api/bank/deposits", h.BankDeposits)
-	r.GET("/api/bank/withdrawals", h.BankWithdrawals)
-	r.GET("/api/bank/subgraph/deposits", h.BankSubgraphDeposits)
-	r.GET("/api/bank/subgraph/withdrawals", h.BankSubgraphWithdrawals)
+	r.GET("/health", hsys.Health())
+	r.GET("/api/info", hsys.APIInfo())
+	r.GET("/api/chain/status", hchain.Status(h))
+	r.GET("/api/contract/counter/value", hctr.CounterValue(h))
+	r.POST("/api/contract/counter/count", hctr.CounterIncrement(h))
+	r.GET("/api/bank/deposits", hbank.Deposits(h))
+	r.GET("/api/bank/withdrawals", hbank.Withdrawals(h))
+	r.GET("/api/bank/subgraph/deposits", hbank.SubgraphDeposits(h))
+	r.GET("/api/bank/subgraph/withdrawals", hbank.SubgraphWithdrawals(h))
+
+	hcp.Register(r, h)
 
 	return r
 }

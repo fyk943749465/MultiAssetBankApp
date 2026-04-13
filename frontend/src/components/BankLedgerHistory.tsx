@@ -12,11 +12,21 @@ import {
 } from "../api";
 import { getBankAddress } from "../config/bank";
 import { SEPOLIA_ERC20_PRESETS } from "../config/sepoliaErc20";
-import { btnGhost, sectionTitleAccent, surface } from "../ui/styles";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 const LEDGER_REFRESH = "bank-ledger-refresh";
 
-/** 存款成功后由 BankDeposit 触发，便于本组件重新拉库 */
 export function notifyBankLedgerRefresh() {
   window.dispatchEvent(new Event(LEDGER_REFRESH));
 }
@@ -113,84 +123,73 @@ export function BankLedgerHistory() {
     return () => window.removeEventListener(LEDGER_REFRESH, onRefresh);
   }, [address, load]);
 
-  if (!isConnected || !address) {
-    return null;
-  }
+  if (!isConnected || !address) return null;
+
+  const tabClass = (active: boolean) =>
+    cn(
+      "rounded-md px-3 py-1.5 text-xs font-medium transition",
+      active ? "bg-secondary text-secondary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+    );
 
   return (
-    <section className={surface}>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className={sectionTitleAccent}>充值 / 提现记录</h2>
-        <button type="button" className={btnGhost} disabled={loading} onClick={() => void load()}>
-          {loading ? "加载中…" : "刷新"}
-        </button>
-      </div>
-      <div className="mb-4 flex flex-wrap gap-1 rounded-xl border border-slate-800/80 bg-slate-950/40 p-1">
-        <button
-          type="button"
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-            source === "database"
-              ? "bg-slate-700/90 text-slate-100 shadow-sm"
-              : "text-slate-500 hover:bg-slate-800/60 hover:text-slate-300"
-          }`}
-          onClick={() => setSource("database")}
-        >
-          后端数据库
-        </button>
-        <button
-          type="button"
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-            source === "subgraph"
-              ? "bg-slate-700/90 text-slate-100 shadow-sm"
-              : "text-slate-500 hover:bg-slate-800/60 hover:text-slate-300"
-          }`}
-          onClick={() => setSource("subgraph")}
-        >
-          The Graph 子图
-        </button>
-      </div>
-      <p className="mb-4 font-mono text-xs text-slate-500">
-        {source === "database" ? (
-          <>
-            数据来源：<span className="text-slate-400">PostgreSQL（后端索引）</span> ·{" "}
-            <span className="text-slate-400">{address}</span>
-          </>
-        ) : (
-          <>
-            数据来源：<span className="text-slate-400">The Graph（经 Go 后端代理）</span> ·{" "}
-            <span className="text-slate-400">{address}</span>
-          </>
-        )}
-      </p>
-      {err && (
-        <p className="mb-4 rounded-xl border border-red-500/30 bg-red-950/30 px-3 py-2.5 text-sm text-red-300">{err}</p>
-      )}
-      {!err && !loading && deposits.length === 0 && withdrawals.length === 0 && (
-        <p className="text-sm text-slate-400">
-          {source === "database" ? (
-            <>
-              暂无记录。请确认后端已配置 <span className="font-mono text-slate-300">BANK_CONTRACT_ADDRESS</span>、
-              <span className="font-mono text-slate-300">ETH_RPC_URL</span> 且索引器在运行；新交易需等待数秒再刷新。
-            </>
-          ) : (
-            <>
-              暂无记录。请确认后端 <span className="font-mono text-slate-300">SUBGRAPH_URL</span>、
-              <span className="font-mono text-slate-300">SUBGRAPH_API_KEY</span> 已配置，且子图已同步到当前区块；新事件需等待子图索引延迟。
-            </>
-          )}
-        </p>
-      )}
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-primary">充值 / 提现记录</CardTitle>
+          <Button variant="outline" size="sm" disabled={loading} onClick={() => void load()}>
+            {loading ? "加载中…" : "刷新"}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="inline-flex rounded-lg border bg-muted/30 p-1">
+          <button type="button" className={tabClass(source === "database")} onClick={() => setSource("database")}>
+            后端数据库
+          </button>
+          <button type="button" className={tabClass(source === "subgraph")} onClick={() => setSource("subgraph")}>
+            The Graph 子图
+          </button>
+        </div>
 
-      <div className="space-y-6">
-        <LedgerTable title="充值（Deposited）" rows={deposits} ethSentinel={ethSentinel} emptyHint="暂无充值记录" />
-        <LedgerTable
-          title="提现（Withdrawn）"
-          rows={withdrawals}
-          ethSentinel={ethSentinel}
-          emptyHint="暂无提现记录"
-        />
-      </div>
-    </section>
+        <p className="font-mono text-xs text-muted-foreground">
+          数据来源：
+          <span className="text-foreground">
+            {source === "database" ? "PostgreSQL（后端索引）" : "The Graph（经 Go 后端代理）"}
+          </span>{" "}
+          · <span className="text-foreground">{address}</span>
+        </p>
+
+        {err && (
+          <Alert variant="destructive">
+            <AlertDescription>{err}</AlertDescription>
+          </Alert>
+        )}
+
+        {!err && !loading && deposits.length === 0 && withdrawals.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            {source === "database" ? (
+              <>
+                暂无记录。请确认后端已配置{" "}
+                <span className="font-mono text-foreground">BANK_CONTRACT_ADDRESS</span>、
+                <span className="font-mono text-foreground">ETH_RPC_URL</span> 且索引器在运行；新交易需等待数秒再刷新。
+              </>
+            ) : (
+              <>
+                暂无记录。请确认后端{" "}
+                <span className="font-mono text-foreground">SUBGRAPH_URL</span>、
+                <span className="font-mono text-foreground">SUBGRAPH_API_KEY</span>{" "}
+                已配置，且子图已同步到当前区块；新事件需等待子图索引延迟。
+              </>
+            )}
+          </p>
+        )}
+
+        <div className="space-y-6">
+          <LedgerTable title="充值（Deposited）" rows={deposits} ethSentinel={ethSentinel} emptyHint="暂无充值记录" />
+          <LedgerTable title="提现（Withdrawn）" rows={withdrawals} ethSentinel={ethSentinel} emptyHint="暂无提现记录" />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -208,53 +207,50 @@ function LedgerTable({
   if (rows.length === 0) {
     return (
       <div>
-        <h3 className="mb-1.5 text-sm font-semibold text-slate-200">{title}</h3>
-        <p className="text-xs text-slate-500">{emptyHint}</p>
+        <h3 className="mb-1.5 text-sm font-semibold text-foreground">{title}</h3>
+        <p className="text-xs text-muted-foreground">{emptyHint}</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-950/35">
-      <h3 className="border-b border-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200">{title}</h3>
-      <table className="w-full min-w-[36rem] border-collapse text-left text-xs">
-        <thead>
-          <tr className="border-b border-slate-800/90 bg-slate-950/50 text-[11px] uppercase tracking-wide text-slate-500">
-            <th className="py-2.5 pl-3 pr-2 font-semibold">时间（UTC）</th>
-            <th className="py-2.5 pr-2 font-semibold">资产</th>
-            <th className="py-2.5 pr-2 font-semibold">数量</th>
-            <th className="py-2.5 pr-2 font-semibold">区块</th>
-            <th className="py-2.5 pr-3 font-semibold">交易</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="overflow-x-auto rounded-lg border">
+      <h3 className="border-b px-3 py-2.5 text-sm font-semibold text-foreground">{title}</h3>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>时间（UTC）</TableHead>
+            <TableHead>资产</TableHead>
+            <TableHead>数量</TableHead>
+            <TableHead>区块</TableHead>
+            <TableHead>交易</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.map((r) => (
-            <tr
-              key={ledgerRowKey(r)}
-              className="border-b border-slate-800/50 text-slate-300 transition hover:bg-slate-800/30"
-            >
-              <td className="py-2.5 pl-3 pr-2 font-mono text-[11px] whitespace-nowrap text-slate-400">
+            <TableRow key={ledgerRowKey(r)}>
+              <TableCell className="font-mono text-[11px] whitespace-nowrap text-muted-foreground">
                 {r.block_time ? new Date(r.block_time).toISOString().replace("T", " ").slice(0, 19) : "—"}
-              </td>
-              <td className="py-2.5 pr-2 font-mono text-[11px]" title={r.token_address}>
+              </TableCell>
+              <TableCell className="font-mono text-[11px]" title={r.token_address}>
                 {tokenLabel(r.token_address, ethSentinel)}
-              </td>
-              <td className="py-2.5 pr-2 font-mono text-slate-200">{formatAmount(r, ethSentinel)}</td>
-              <td className="py-2.5 pr-2 font-mono text-slate-400">{r.block_number}</td>
-              <td className="py-2.5 pr-3">
+              </TableCell>
+              <TableCell className="font-mono">{formatAmount(r, ethSentinel)}</TableCell>
+              <TableCell className="font-mono text-muted-foreground">{r.block_number}</TableCell>
+              <TableCell>
                 <a
                   href={txUrl(r.tx_hash)}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-mono text-emerald-400/95 underline decoration-emerald-500/30 underline-offset-2 transition hover:text-emerald-300 hover:decoration-emerald-400"
+                  className="font-mono text-primary underline decoration-primary/30 underline-offset-2 transition hover:decoration-primary"
                 >
                   {r.tx_hash.slice(0, 10)}…
                 </a>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

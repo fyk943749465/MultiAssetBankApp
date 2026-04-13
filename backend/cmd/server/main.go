@@ -2,7 +2,7 @@
 // @version         0.1.0
 // @description     REST API: health, chain status, counter contract calls, bank ledger (PostgreSQL indexer + optional The Graph subgraph).
 // @BasePath        /
-//go:generate go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -d .,../../internal/handlers -g main.go -o ../../docs --parseDependency --parseInternal
+//go:generate go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -d .,../../internal/handlers,../../internal/handlers/system,../../internal/handlers/chain,../../internal/handlers/bank,../../internal/handlers/contract,../../internal/handlers/codepulse -g main.go -o ../../docs --parseDependency --parseInternal
 
 package main
 
@@ -83,12 +83,38 @@ func main() {
 		log.Printf("subgraph: 已配置 SUBGRAPH_URL（充值/提现子图 API 可用）")
 	}
 
+	var cpSubClient *subgraph.Client
+	if u := strings.TrimSpace(cfg.SubgraphCodePulseURL); u != "" {
+		cpSubClient = subgraph.New(u, cfg.SubgraphAPIKey)
+		log.Printf("subgraph: 已配置 SUBGRAPH_CODE_PULSE_URL（众筹子图 API 可用）")
+	}
+
+	var codePulse *contracts.CodePulse
+	if a := strings.TrimSpace(cfg.CodePulseAddress); a != "" {
+		if !common.IsHexAddress(a) {
+			log.Printf("code-pulse: CODE_PULSE_ADDRESS 不是合法 0x 地址")
+		} else if ethClient != nil {
+			addr := common.HexToAddress(a)
+			cp, errCP := contracts.NewCodePulse(ethClient.Eth(), addr)
+			if errCP != nil {
+				log.Printf("code-pulse: bind contract: %v", errCP)
+			} else {
+				codePulse = cp
+				log.Printf("code-pulse: 合约绑定就绪 %s", addr.Hex())
+			}
+		} else {
+			log.Printf("code-pulse: CODE_PULSE_ADDRESS 已配置但 ETH_RPC_URL 不可用，合约绑定跳过")
+		}
+	}
+
 	h := &handlers.Handlers{
-		DB:       db,
-		Chain:    ethClient,
-		Counter:  counter,
-		TxKey:    txKey,
-		Subgraph: subClient,
+		DB:                db,
+		Chain:             ethClient,
+		Counter:           counter,
+		TxKey:             txKey,
+		Subgraph:          subClient,
+		CodePulse:         codePulse,
+		SubgraphCodePulse: cpSubClient,
 	}
 	r := router.New(h)
 

@@ -35,6 +35,17 @@ type BankWithdrawalsResp struct {
 	Withdrawals []models.BankWithdrawal `json:"withdrawals"`
 }
 
+// SubgraphEventRow 银行子图单条事件（Swagger 与 bank 子图接口共用）。
+type SubgraphEventRow struct {
+	SubgraphEntityID string `json:"subgraph_entity_id"`
+	TokenAddress     string `json:"token_address"`
+	UserAddress      string `json:"user_address"`
+	AmountRaw        string `json:"amount_raw"`
+	BlockNumber      uint64 `json:"block_number"`
+	BlockTime        string `json:"block_time"`
+	TxHash           string `json:"tx_hash"`
+}
+
 type SubgraphDepositsResp struct {
 	Deposits []SubgraphEventRow `json:"deposits"`
 	Source   string             `json:"source" example:"subgraph"`

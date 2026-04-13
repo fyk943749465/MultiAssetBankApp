@@ -1,5 +1,51 @@
 basePath: /
 definitions:
+  codepulse.ActionCheckReq:
+    properties:
+      action:
+        type: string
+      campaign_id:
+        type: integer
+      milestone_index:
+        type: integer
+      params: {}
+      proposal_id:
+        type: integer
+      wallet:
+        type: string
+    required:
+    - action
+    - wallet
+    type: object
+  codepulse.ActionCheckResp:
+    properties:
+      allowed:
+        type: boolean
+      current_state:
+        type: string
+      reason_code:
+        type: string
+      reason_message:
+        type: string
+      required_role:
+        type: string
+      revert_error_args: {}
+      revert_error_name:
+        type: string
+    type: object
+  codepulse.TxBuildReq:
+    properties:
+      action:
+        type: string
+      params:
+        additionalProperties: {}
+        type: object
+      wallet:
+        type: string
+    required:
+    - action
+    - wallet
+    type: object
   handlers.APIInfoResp:
     properties:
       name:
@@ -309,6 +355,516 @@ paths:
       summary: Chain status
       tags:
       - chain
+  /api/code-pulse/actions/check:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Action check request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codepulse.ActionCheckReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/codepulse.ActionCheckResp'
+      summary: Action pre-check
+      tags:
+      - code-pulse
+  /api/code-pulse/admin/dashboard:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Admin dashboard
+      tags:
+      - code-pulse
+  /api/code-pulse/admin/platform-funds:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Platform funds overview
+      tags:
+      - code-pulse-admin
+  /api/code-pulse/admin/proposal-initiators:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List proposal initiators
+      tags:
+      - code-pulse-admin
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: '{ address: string }'
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Add proposal initiator
+      tags:
+      - code-pulse-admin
+  /api/code-pulse/admin/proposal-initiators/{address}:
+    delete:
+      parameters:
+      - description: Wallet address
+        in: path
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Remove proposal initiator
+      tags:
+      - code-pulse-admin
+  /api/code-pulse/admin/sync-status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Sync status
+      tags:
+      - code-pulse-admin
+  /api/code-pulse/campaigns:
+    get:
+      parameters:
+      - description: Filter by state
+        in: query
+        name: state
+        type: string
+      - description: Filter by proposal_id
+        in: query
+        name: proposal_id
+        type: integer
+      - description: Filter by organizer address
+        in: query
+        name: organizer
+        type: string
+      - description: Filter by developer (joined)
+        in: query
+        name: developer
+        type: string
+      - description: Filter by contributor (joined)
+        in: query
+        name: contributor
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: 'Sort: launched_at_desc (default), deadline_at_asc'
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List campaigns
+      tags:
+      - code-pulse
+  /api/code-pulse/campaigns/{campaignId}:
+    get:
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: campaignId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+      summary: Campaign detail
+      tags:
+      - code-pulse
+  /api/code-pulse/campaigns/{campaignId}/contributions:
+    get:
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: campaignId
+        required: true
+        type: integer
+      - description: Filter by contributor address
+        in: query
+        name: contributor
+        type: string
+      - description: 'Sort: amount_desc (default), latest'
+        in: query
+        name: sort
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Campaign contributions
+      tags:
+      - code-pulse
+  /api/code-pulse/campaigns/{campaignId}/timeline:
+    get:
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: campaignId
+        required: true
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Campaign timeline
+      tags:
+      - code-pulse
+  /api/code-pulse/config:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Code Pulse config
+      tags:
+      - code-pulse
+  /api/code-pulse/contributors/{address}/dashboard:
+    get:
+      parameters:
+      - description: Wallet address
+        in: path
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Contributor dashboard
+      tags:
+      - code-pulse
+  /api/code-pulse/developers/{address}/dashboard:
+    get:
+      parameters:
+      - description: Wallet address
+        in: path
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Developer dashboard
+      tags:
+      - code-pulse
+  /api/code-pulse/initiators/{address}/dashboard:
+    get:
+      parameters:
+      - description: Wallet address
+        in: path
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Initiator dashboard
+      tags:
+      - code-pulse
+  /api/code-pulse/proposals:
+    get:
+      parameters:
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by organizer address
+        in: query
+        name: organizer
+        type: string
+      - description: Filter by round_review_state
+        in: query
+        name: review_state
+        type: string
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: page_size
+        type: integer
+      - description: 'Sort: submitted_at_desc (default), submitted_at_asc'
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List proposals
+      tags:
+      - code-pulse
+  /api/code-pulse/proposals/{proposalId}:
+    get:
+      parameters:
+      - description: Proposal ID
+        in: path
+        name: proposalId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+      summary: Proposal detail
+      tags:
+      - code-pulse
+  /api/code-pulse/proposals/{proposalId}/timeline:
+    get:
+      parameters:
+      - description: Proposal ID
+        in: path
+        name: proposalId
+        required: true
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Proposal timeline
+      tags:
+      - code-pulse
+  /api/code-pulse/summary:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Code Pulse summary
+      tags:
+      - code-pulse
+  /api/code-pulse/tx/{attemptId}:
+    get:
+      parameters:
+      - description: Attempt ID
+        in: path
+        name: attemptId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorJSON'
+      summary: Get transaction attempt
+      tags:
+      - code-pulse
+  /api/code-pulse/tx/build:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Action + wallet + params
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codepulse.TxBuildReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Build transaction calldata
+      tags:
+      - code-pulse
+  /api/code-pulse/tx/submit:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Action + params
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codepulse.TxBuildReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Submit transaction (server-signed)
+      tags:
+      - code-pulse
+  /api/code-pulse/wallets/{address}/overview:
+    get:
+      parameters:
+      - description: Wallet address (0x...)
+        in: path
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Wallet overview
+      tags:
+      - code-pulse
   /api/contract/counter/count:
     post:
       description: Sends an on-chain transaction calling `count()` using ETH_PRIVATE_KEY.
