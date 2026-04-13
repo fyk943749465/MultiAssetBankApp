@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -135,30 +136,24 @@ func syncSystemStateFromChain(h *handlers.Handlers, contractAddr string) (*model
 	blockNumber := currentBlockNumber(h, ctx)
 	ownerAddr := normalizeAddress(owner.Hex())
 
-	state := models.CPSystemState{ContractAddress: contractAddr}
-	assign := map[string]any{
-		"owner_address":        ownerAddr,
-		"paused":               paused,
-		"source":               "chain",
-		"source_block_number":  blockNumber,
-		"synced_at":            &now,
-		"updated_at":           now,
+	state := models.CPSystemState{
+		ContractAddress:   contractAddr,
+		OwnerAddress:      ownerAddr,
+		Paused:            paused,
+		Source:            "chain",
+		SourceBlockNumber: blockNumber,
+		SyncedAt:          &now,
 	}
-	if err := h.DB.Where("LOWER(contract_address) = ?", contractAddr).
-		Assign(assign).
-		FirstOrCreate(&state, models.CPSystemState{
-			ContractAddress: contractAddr,
-			OwnerAddress:    ownerAddr,
-			Paused:          paused,
-			Source:          "chain",
-			SyncedAt:        &now,
-		}).Error; err != nil {
+	if err := h.DB.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "contract_address"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"owner_address", "paused", "source",
+			"source_block_number", "synced_at", "updated_at",
+		}),
+	}).Create(&state).Error; err != nil {
 		return nil, err
 	}
 	if err := syncAdminRoleCache(h, ownerAddr, blockNumber, &now); err != nil {
-		return nil, err
-	}
-	if err := h.DB.Where("LOWER(contract_address) = ?", contractAddr).First(&state).Error; err != nil {
 		return nil, err
 	}
 	return &state, nil
