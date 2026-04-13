@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
+import { NavButton } from "@/components/nav-spa";
 import { cn } from "@/lib/utils";
 
 function navClass({ isActive }: { isActive: boolean }) {
@@ -11,6 +12,13 @@ function navClass({ isActive }: { isActive: boolean }) {
 }
 
 export function CrowdfundingPage() {
+  const { pathname } = useLocation();
+  const homeActive = pathname === "/crowdfunding";
+  const exploreActive = pathname.startsWith("/crowdfunding/explore");
+  const workspaceActive = pathname === "/crowdfunding/me";
+  const newProposalActive = pathname.startsWith("/crowdfunding/me/proposals/new");
+  const adminActive = pathname.startsWith("/crowdfunding/admin");
+
   return (
     <div className="space-y-10">
       <div className="glass-card rounded-[24px] p-6 sm:p-8 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -22,21 +30,21 @@ export function CrowdfundingPage() {
           Code Pulse 第二阶段已接入动作预检、交易构建/提交、提案创建与管理台。你可以在详情页、工作台和 Admin 页面直接执行链上业务动作。
         </p>
         <nav className="mt-8 flex flex-wrap gap-2 rounded-2xl bg-black/20 p-2 ring-1 ring-white/5" aria-label="Code Pulse 子导航">
-          <NavLink end to="/crowdfunding" className={navClass}>
+          <NavButton to="/crowdfunding" className={navClass({ isActive: homeActive })} aria-current={homeActive ? "page" : undefined}>
             Home
-          </NavLink>
-          <NavLink to="/crowdfunding/explore" className={navClass}>
+          </NavButton>
+          <NavButton to="/crowdfunding/explore" className={navClass({ isActive: exploreActive })} aria-current={exploreActive ? "page" : undefined}>
             Explore
-          </NavLink>
-          <NavLink end to="/crowdfunding/me" className={navClass}>
+          </NavButton>
+          <NavButton to="/crowdfunding/me" className={navClass({ isActive: workspaceActive })} aria-current={workspaceActive ? "page" : undefined}>
             My Workspace
-          </NavLink>
-          <NavLink to="/crowdfunding/me/proposals/new" className={navClass}>
+          </NavButton>
+          <NavButton to="/crowdfunding/me/proposals/new" className={navClass({ isActive: newProposalActive })} aria-current={newProposalActive ? "page" : undefined}>
             New Proposal
-          </NavLink>
-          <NavLink to="/crowdfunding/admin" className={navClass}>
+          </NavButton>
+          <NavButton to="/crowdfunding/admin" className={navClass({ isActive: adminActive })} aria-current={adminActive ? "page" : undefined}>
             Admin
-          </NavLink>
+          </NavButton>
         </nav>
       </div>
 

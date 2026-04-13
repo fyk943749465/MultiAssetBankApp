@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { NavButton } from "@/components/nav-spa";
 import { useAccount } from "wagmi";
 import { ActionFormCard } from "../../features/codepulse/action-ui";
 import {
@@ -132,12 +132,12 @@ export function CrowdfundingAdminPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        <Link to="/crowdfunding/me" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+        <NavButton to="/crowdfunding/me" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
           返回我的工作台
-        </Link>
-        <Link to="/crowdfunding" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+        </NavButton>
+        <NavButton to="/crowdfunding" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
           返回首页
-        </Link>
+        </NavButton>
       </div>
 
       <Card>

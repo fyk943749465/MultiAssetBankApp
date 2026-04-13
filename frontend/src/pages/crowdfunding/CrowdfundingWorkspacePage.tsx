@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { NavButton, RoutePressable } from "@/components/nav-spa";
 import { useAccount } from "wagmi";
 import { ActionFormCard } from "../../features/codepulse/action-ui";
 import {
@@ -110,13 +110,13 @@ export function CrowdfundingWorkspacePage() {
             description="根据当前连接的钱包地址，组合展示 initiator / contributor / developer 的只读视图。"
             action={
               <>
-                <Link to="/crowdfunding/me/proposals/new" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                <NavButton to="/crowdfunding/me/proposals/new" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
                   新建提案
-                </Link>
+                </NavButton>
                 {data.overview.is_admin ? (
-                  <Link to="/crowdfunding/admin" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                  <NavButton to="/crowdfunding/admin" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
                     Admin
-                  </Link>
+                  </NavButton>
                 ) : null}
               </>
             }
@@ -220,7 +220,7 @@ export function CrowdfundingWorkspacePage() {
             {data.contributor.refundable.length > 0 ? (
               <div className="grid gap-4 xl:grid-cols-2">
                 {data.contributor.refundable.map((item) => (
-                  <Link key={`${item.campaign_id}-${item.contributor_address}`} to={`/crowdfunding/campaigns/${item.campaign_id}`} className="block">
+                  <RoutePressable key={`${item.campaign_id}-${item.contributor_address}`} to={`/crowdfunding/campaigns/${item.campaign_id}`} className="block">
                     <Card className="transition hover:ring-primary/30">
                       <CardContent>
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Campaign #{item.campaign_id}</p>
@@ -231,7 +231,7 @@ export function CrowdfundingWorkspacePage() {
                         </div>
                       </CardContent>
                     </Card>
-                  </Link>
+                  </RoutePressable>
                 ))}
               </div>
             ) : (
@@ -242,7 +242,7 @@ export function CrowdfundingWorkspacePage() {
             {data.contributor.fundraising.length > 0 ? (
               <div className="grid gap-4 xl:grid-cols-2">
                 {data.contributor.fundraising.map((item) => (
-                  <Link key={`${item.campaign_id}-${item.contributor_address}`} to={`/crowdfunding/campaigns/${item.campaign_id}`} className="block">
+                  <RoutePressable key={`${item.campaign_id}-${item.contributor_address}`} to={`/crowdfunding/campaigns/${item.campaign_id}`} className="block">
                     <Card className="transition hover:ring-primary/30">
                       <CardContent>
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Campaign #{item.campaign_id}</p>
@@ -250,7 +250,7 @@ export function CrowdfundingWorkspacePage() {
                         <p className="mt-2 text-sm text-muted-foreground">累计捐助 {formatWei(item.total_contributed_wei)}</p>
                       </CardContent>
                     </Card>
-                  </Link>
+                  </RoutePressable>
                 ))}
               </div>
             ) : (
@@ -261,7 +261,7 @@ export function CrowdfundingWorkspacePage() {
             {data.contributor.successful.length > 0 ? (
               <div className="grid gap-4 xl:grid-cols-2">
                 {data.contributor.successful.map((item) => (
-                  <Link key={`${item.campaign_id}-${item.contributor_address}`} to={`/crowdfunding/campaigns/${item.campaign_id}`} className="block">
+                  <RoutePressable key={`${item.campaign_id}-${item.contributor_address}`} to={`/crowdfunding/campaigns/${item.campaign_id}`} className="block">
                     <Card className="transition hover:ring-primary/30">
                       <CardContent>
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Campaign #{item.campaign_id}</p>
@@ -269,7 +269,7 @@ export function CrowdfundingWorkspacePage() {
                         <p className="mt-2 text-sm text-muted-foreground">累计捐助 {formatWei(item.total_contributed_wei)}</p>
                       </CardContent>
                     </Card>
-                  </Link>
+                  </RoutePressable>
                 ))}
               </div>
             ) : (

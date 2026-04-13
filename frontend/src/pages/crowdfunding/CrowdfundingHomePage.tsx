@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { NavButton } from "@/components/nav-spa";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -83,12 +83,12 @@ export function CrowdfundingHomePage() {
             description="围绕提案审核、众筹轮次、贡献历史与个人工作台的只读 MVP。当前页面聚合后端 summary、config 与精选列表，方便先完成浏览与发现。"
             action={
               <>
-                <Link to="/crowdfunding/explore" className={cn(buttonVariants())}>
+                <NavButton to="/crowdfunding/explore" className={cn(buttonVariants())}>
                   浏览提案与活动
-                </Link>
-                <Link to="/crowdfunding/me" className={cn(buttonVariants({ variant: "outline" }))}>
+                </NavButton>
+                <NavButton to="/crowdfunding/me" className={cn(buttonVariants({ variant: "outline" }))}>
                   我的工作台
-                </Link>
+                </NavButton>
               </>
             }
           />

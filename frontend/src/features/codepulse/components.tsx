@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { RoutePressable } from "@/components/nav-spa";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -208,7 +208,7 @@ export function ProposalCard({
   readonly compact?: boolean;
 }) {
   return (
-    <Link
+    <RoutePressable
       to={`/crowdfunding/proposals/${proposal.proposal_id}`}
       className="block"
     >
@@ -263,7 +263,7 @@ export function ProposalCard({
           ) : null}
         </CardContent>
       </Card>
-    </Link>
+    </RoutePressable>
   );
 }
 
@@ -281,7 +281,7 @@ export function CampaignCard({
   );
 
   return (
-    <Link
+    <RoutePressable
       to={`/crowdfunding/campaigns/${campaign.campaign_id}`}
       className="block"
     >
@@ -334,7 +334,7 @@ export function CampaignCard({
           ) : null}
         </CardContent>
       </Card>
-    </Link>
+    </RoutePressable>
   );
 }
 

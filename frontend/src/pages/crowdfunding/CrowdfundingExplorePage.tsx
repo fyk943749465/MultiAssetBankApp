@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { NavButton } from "@/components/nav-spa";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -206,12 +207,12 @@ export function CrowdfundingExplorePage() {
                   <CardContent>
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">快速跳转</p>
                     {numericKeyword ? (
-                      <Link
+                      <NavButton
                         to={`/crowdfunding/campaigns/${numericKeyword}`}
                         className={cn(buttonVariants({ size: "sm" }))}
                       >
                         打开 Campaign #{numericKeyword}
-                      </Link>
+                      </NavButton>
                     ) : (
                       <p className="text-sm text-muted-foreground">输入纯数字可快速直达活动详情。</p>
                     )}
@@ -223,12 +224,12 @@ export function CrowdfundingExplorePage() {
 
           {view === "proposals" && numericKeyword ? (
             <div className="mt-4">
-              <Link
+              <NavButton
                 to={`/crowdfunding/proposals/${numericKeyword}`}
                 className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
               >
                 打开 Proposal #{numericKeyword}
-              </Link>
+              </NavButton>
             </div>
           ) : null}
         </CardContent>

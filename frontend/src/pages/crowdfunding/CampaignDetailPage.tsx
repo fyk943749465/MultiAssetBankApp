@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { NavButton } from "@/components/nav-spa";
 import { useAccount } from "wagmi";
 import { ActionFormCard } from "../../features/codepulse/action-ui";
 import {
@@ -105,18 +106,18 @@ export function CampaignDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        <Link
+        <NavButton
           to="/crowdfunding/explore?view=campaigns"
           className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
         >
           返回探索页
-        </Link>
-        <Link
+        </NavButton>
+        <NavButton
           to={`/crowdfunding/proposals/${detail.campaign.proposal_id}`}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
         >
           查看所属提案
-        </Link>
+        </NavButton>
       </div>
 
       <Card>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { NavButton } from "@/components/nav-spa";
 import { useAccount } from "wagmi";
 import { ActionFormCard } from "../../features/codepulse/action-ui";
 import { fetchCodePulseProposalDetail, fetchCodePulseProposalTimeline } from "../../features/codepulse/api";
@@ -89,15 +90,15 @@ export function ProposalDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        <Link
+        <NavButton
           to="/crowdfunding/explore?view=proposals"
           className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
         >
           返回探索页
-        </Link>
-        <Link to="/crowdfunding" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+        </NavButton>
+        <NavButton to="/crowdfunding" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
           返回首页
-        </Link>
+        </NavButton>
       </div>
 
       <Card>

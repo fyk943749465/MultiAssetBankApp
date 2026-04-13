@@ -1,17 +1,23 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { ModeToggle } from "@/components/mode-toggle";
 import { cn } from "@/lib/utils";
 
 function navClass({ isActive }: { isActive: boolean }): string {
   return cn(
-    "relative rounded-xl px-6 py-2.5 text-sm font-medium transition-all duration-300",
+    "relative cursor-pointer rounded-xl border-0 bg-transparent px-6 py-2.5 text-sm font-medium transition-all duration-300",
     isActive
       ? "text-foreground bg-primary/10 shadow-[0_0_15px_rgba(45,212,191,0.15)] ring-1 ring-primary/20"
       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
   );
 }
+
 export function AppLayout() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const bankActive = pathname === "/bank";
+  const crowdfundingActive = pathname.startsWith("/crowdfunding");
+
   return (
     <div className="relative flex min-h-screen flex-col selection:bg-primary/20">
       {/* Absolute Top-Right Controls */}
@@ -39,12 +45,22 @@ export function AppLayout() {
             className="mx-auto mt-10 inline-flex flex-wrap items-center justify-center gap-2 rounded-[20px] glass-panel p-2.5"
             aria-label="业务模块"
           >
-            <NavLink to="/bank" className={navClass}>
+            <button
+              type="button"
+              className={navClass({ isActive: bankActive })}
+              aria-current={bankActive ? "page" : undefined}
+              onClick={() => navigate("/bank")}
+            >
               银行与后端
-            </NavLink>
-            <NavLink to="/crowdfunding" className={navClass}>
+            </button>
+            <button
+              type="button"
+              className={navClass({ isActive: crowdfundingActive })}
+              aria-current={crowdfundingActive ? "page" : undefined}
+              onClick={() => navigate("/crowdfunding")}
+            >
               众筹合约
-            </NavLink>
+            </button>
           </nav>
         </div>
 
