@@ -3,6 +3,7 @@ import { NavButton } from "@/components/nav-spa";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { useChainId } from "wagmi";
 import {
   fetchCodePulseCampaigns,
   fetchCodePulseConfig,
@@ -20,6 +21,7 @@ import {
   SectionIntro,
   StatCard,
 } from "../../features/codepulse/components";
+import { CodePulseEventLogSection } from "../../features/codepulse/event-log-section";
 import { formatDuration, formatWei, shortHash } from "../../features/codepulse/format";
 import type { CPConfig, CPSummary, CPCampaign, CPProposal } from "../../features/codepulse/types";
 
@@ -32,6 +34,7 @@ type HomeState = {
 };
 
 export function CrowdfundingHomePage() {
+  const chainId = useChainId();
   const [data, setData] = useState<HomeState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +126,8 @@ export function CrowdfundingHomePage() {
           ]}
         />
       </section>
+
+      <CodePulseEventLogSection chainId={chainId} />
 
       {error ? <ErrorState message={error} /> : null}
 

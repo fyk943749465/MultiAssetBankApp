@@ -19,4 +19,6 @@ type Handlers struct {
 	Subgraph          *subgraph.Client
 	CodePulse         *contracts.CodePulse
 	SubgraphCodePulse *subgraph.Client
+	// CodePulseServerTx 为 true 时允许 POST /api/code-pulse/tx/submit 使用 ETH_PRIVATE_KEY 代签（默认 false）。
+	CodePulseServerTx bool
 }

@@ -1,6 +1,13 @@
 import type { ReactNode } from "react";
 import { RoutePressable } from "@/components/nav-spa";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -84,7 +91,10 @@ export function StatusPill({
   readonly status?: string | null;
 }) {
   return (
-    <Badge variant={inferStatusVariant(status)}>
+    <Badge
+      variant={inferStatusVariant(status)}
+      className="h-auto min-h-5 max-w-full shrink-0 overflow-visible py-1 leading-snug whitespace-normal sm:max-w-none sm:whitespace-nowrap"
+    >
       {titleCaseStatus(status)}
     </Badge>
   );
@@ -214,17 +224,13 @@ export function ProposalCard({
     >
       <Card className="transition-all duration-200 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
         <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <CardDescription>
-                Proposal #{proposal.proposal_id}
-              </CardDescription>
-              <CardTitle className="truncate">
-                {proposal.github_url}
-              </CardTitle>
-            </div>
+          <CardDescription>Proposal #{proposal.proposal_id}</CardDescription>
+          <CardTitle className="min-w-0 truncate pr-2">
+            {proposal.github_url}
+          </CardTitle>
+          <CardAction>
             <StatusPill status={proposal.status} />
-          </div>
+          </CardAction>
         </CardHeader>
 
         <CardContent>
@@ -287,18 +293,15 @@ export function CampaignCard({
     >
       <Card className="transition-all duration-200 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
         <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <CardDescription>
-                Campaign #{campaign.campaign_id} · Proposal #
-                {campaign.proposal_id}
-              </CardDescription>
-              <CardTitle className="truncate">
-                {campaign.github_url}
-              </CardTitle>
-            </div>
+          <CardDescription>
+            Campaign #{campaign.campaign_id} · Proposal #{campaign.proposal_id}
+          </CardDescription>
+          <CardTitle className="min-w-0 truncate pr-2">
+            {campaign.github_url}
+          </CardTitle>
+          <CardAction>
             <StatusPill status={campaign.state} />
-          </div>
+          </CardAction>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -364,18 +367,18 @@ export function MilestoneList({
             key={`${isCampaignMilestone ? milestone.campaign_id : milestone.id}-${milestone.milestone_index}`}
           >
             <CardHeader>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <CardDescription>
-                    Milestone {milestone.milestone_index + 1}
-                    {"round_ordinal" in milestone
-                      ? ` · Round ${milestone.round_ordinal}`
-                      : ""}
-                  </CardDescription>
-                  <CardTitle>{milestone.description}</CardTitle>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">
+              <CardDescription>
+                Milestone {milestone.milestone_index + 1}
+                {"round_ordinal" in milestone
+                  ? ` · Round ${milestone.round_ordinal}`
+                  : ""}
+              </CardDescription>
+              <CardTitle className="min-w-0 pr-2">
+                {milestone.description}
+              </CardTitle>
+              <CardAction>
+                <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                  <Badge variant="outline" className="shrink-0">
                     {formatMilestonePercent(milestone.percentage_raw)}
                   </Badge>
                   {"approved" in milestone ? (
@@ -389,7 +392,7 @@ export function MilestoneList({
                     <StatusPill status="claimed" />
                   ) : null}
                 </div>
-              </div>
+              </CardAction>
             </CardHeader>
             {"unlock_at" in milestone && milestone.unlock_at ? (
               <CardContent>

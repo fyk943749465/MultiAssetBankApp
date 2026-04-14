@@ -20,6 +20,10 @@ export type CPConfig = {
   contract_address: string;
   contract_configured: boolean;
   subgraph_configured: boolean;
+  /** 仅当 CODE_PULSE_SERVER_TX=1 且配置了 ETH_PRIVATE_KEY 时为代签地址 */
+  server_tx_relayer_address?: string;
+  /** 是否开放 POST /api/code-pulse/tx/submit（默认 false，由钱包签名发送） */
+  code_pulse_server_tx_enabled?: boolean;
   milestone_num: number;
   min_campaign_target: string;
   min_campaign_duration: number;
@@ -243,6 +247,8 @@ export type WalletOverview = {
   donation_count: number;
   developer_campaign_count: number;
   available_dashboards: string[];
+  /** 子图里已有该地址作为 organizer 的提案（PG 可能尚未同步） */
+  subgraph_organizer_proposals?: boolean;
 };
 
 export type InitiatorDashboard = {
@@ -255,6 +261,10 @@ export type InitiatorDashboard = {
   settled_can_follow_on: CPProposal[];
   fundraising_campaigns: CPCampaign[];
   campaigns_total: number;
+  /** 配置子图时：工作台只读分组以子图事件为准（`postgresql` 未返回则仍为 PG） */
+  view_data_source?: "subgraph" | string;
+  /** @deprecated 见 view_data_source */
+  subgraph_supplement?: boolean;
 };
 
 export type ContributorDashboardEntry = CPContribution & {
@@ -331,8 +341,20 @@ export type TxBuildResponse = {
   data: string;
   value: string;
   simulation_ok: boolean;
+  /** 请求体里的 wallet（用于审计）；链上发送方见 tx_submit_signer */
+  request_wallet?: string;
+  /** 与 TxSubmit 一致：有 ETH_PRIVATE_KEY 时为代签地址 */
+  tx_submit_signer?: string;
+  /** 固定为 wallet_sign：由连接的钱包广播 */
+  tx_submit_mode?: string;
+  /** 后端是否额外开放服务端 submit（默认 false） */
+  server_tx_submit_available?: boolean;
   chain_id?: number;
   gas_estimate?: number;
+  /** 与请求 params 对照：实际打入 calldata 的众筹时长（秒，十进制字符串） */
+  duration_seconds_packed?: string;
+  /** 与请求 params 对照：实际打入 calldata 的目标金额（wei） */
+  target_wei_packed?: string;
   revert_error_name?: string;
   revert_error_args?: unknown;
   revert_message?: string;
@@ -341,6 +363,10 @@ export type TxBuildResponse = {
 export type TxSubmitResponse = {
   tx_hash: string;
   action: CodePulseAction;
+  /** 实际链上交易发起地址 */
+  from?: string;
+  tx_submit_mode?: string;
+  request_wallet?: string;
 };
 
 export type CPTxAttempt = {
@@ -416,7 +442,18 @@ export type PlatformFundsResponse = {
 
 export type SyncStatusResponse = {
   cursors: CPSyncCursor[];
+  /** 子图可用且计数成功时为子图实体总数；否则为 cp_event_log 行数 */
   event_count: number;
+  event_count_source?: "subgraph" | "database";
+  /** 始终为 PostgreSQL cp_event_log 行数（可与 event_count 对照） */
+  event_count_database?: number;
+};
+
+export type AdminEventsResponse = {
+  events: CPEventLog[];
+  pagination: Pagination;
+  /** 子图直连或回退数据库 */
+  data_source?: "subgraph" | "database";
 };
 
 export type OkAddressResponse = {

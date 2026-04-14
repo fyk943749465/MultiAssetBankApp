@@ -96,10 +96,18 @@ export function CrowdfundingNewProposalPage() {
         action="submit_proposal"
         wallet={address}
         description="字段会根据后端 config 做前端校验，再进入预检 / 模拟 / 提交流程。目标金额以 ETH 输入，前端会自动换算为 wei。"
+        presetParams={{ duration: String(config.min_campaign_duration) }}
         fields={[
           { key: "github_url", label: "GitHub URL", kind: "text", required: true, placeholder: "https://github.com/owner/repo" },
           { key: "target", label: "目标金额（ETH）", kind: "eth", required: true, placeholder: "0.1", helpText: `不得低于 ${formatWei(config.min_campaign_target)}` },
-          { key: "duration", label: "众筹时长（秒）", kind: "bigint", required: true, placeholder: String(config.min_campaign_duration), helpText: `最少 ${formatDuration(config.min_campaign_duration)}` },
+          {
+            key: "duration",
+            label: "众筹时长（秒）",
+            kind: "bigint",
+            required: true,
+            placeholder: String(config.min_campaign_duration),
+            helpText: `链上最短 ${formatDuration(config.min_campaign_duration)}（${config.min_campaign_duration} 秒）。该数字会原样写入合约；低于此无法通过模拟。`,
+          },
           {
             key: "milestone_descs", label: milestoneLabel, kind: "multiline_list", required: true,
             rows: config.milestone_num + 1,

@@ -2,6 +2,7 @@ package codepulse
 
 import (
 	"net/http"
+	"sort"
 	"strconv"
 
 	"go-chain/backend/internal/handlers"
@@ -26,11 +27,52 @@ import (
 // @Router       /api/code-pulse/campaigns [get]
 func Campaigns(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		page, pageSize, offset := parsePagination(c)
+
+		hasDBOnlyFilter := c.Query("developer") != "" || c.Query("contributor") != ""
+		if !hasDBOnlyFilter {
+			if sgRows, ok := sgQueryAllCampaigns(ctx, h); ok {
+				filtered := sgFilterCampaigns(sgRows, c)
+				total := int64(len(filtered))
+
+				switch c.DefaultQuery("sort", "launched_at_desc") {
+				case "deadline_at_asc":
+					sort.Slice(filtered, func(i, j int) bool {
+						return filtered[i].DeadlineAt.Before(filtered[j].DeadlineAt)
+					})
+				case "amount_raised_desc":
+					sort.Slice(filtered, func(i, j int) bool {
+						return filtered[i].AmountRaisedWei > filtered[j].AmountRaisedWei
+					})
+				default:
+					sort.Slice(filtered, func(i, j int) bool {
+						return filtered[i].LaunchedAt.After(filtered[j].LaunchedAt)
+					})
+				}
+
+				end := offset + pageSize
+				if end > len(filtered) {
+					end = len(filtered)
+				}
+				paged := []models.CPCampaign{}
+				if offset < len(filtered) {
+					paged = filtered[offset:end]
+				}
+
+				c.JSON(http.StatusOK, gin.H{
+					"campaigns":   paged,
+					"pagination":  Pagination{Page: page, PageSize: pageSize, Total: total},
+					"data_source": "subgraph",
+				})
+				return
+			}
+		}
+
 		if !requireDB(h, c) {
 			return
 		}
 
-		page, pageSize, offset := parsePagination(c)
 		q := h.DB.Model(&models.CPCampaign{})
 
 		if v := c.Query("state"); v != "" {
@@ -78,10 +120,49 @@ func Campaigns(h *handlers.Handlers) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"campaigns":  rows,
-			"pagination": Pagination{Page: page, PageSize: pageSize, Total: total},
+			"campaigns":   rows,
+			"pagination":  Pagination{Page: page, PageSize: pageSize, Total: total},
+			"data_source": "database",
 		})
 	}
+}
+
+func sgFilterCampaigns(all []models.CPCampaign, c *gin.Context) []models.CPCampaign {
+	state := c.Query("state")
+	proposalID := c.Query("proposal_id")
+	organizer := c.Query("organizer")
+
+	if state == "" && proposalID == "" && organizer == "" {
+		return all
+	}
+
+	var pidFilter uint64
+	hasPidFilter := false
+	if proposalID != "" {
+		if pid, err := strconv.ParseUint(proposalID, 10, 64); err == nil {
+			pidFilter = pid
+			hasPidFilter = true
+		}
+	}
+	orgNorm := ""
+	if organizer != "" {
+		orgNorm = normalizeAddress(organizer)
+	}
+
+	out := make([]models.CPCampaign, 0, len(all))
+	for _, ca := range all {
+		if state != "" && ca.State != state {
+			continue
+		}
+		if hasPidFilter && ca.ProposalID != pidFilter {
+			continue
+		}
+		if orgNorm != "" && normalizeAddress(ca.OrganizerAddress) != orgNorm {
+			continue
+		}
+		out = append(out, ca)
+	}
+	return out
 }
 
 // CampaignDetail 众筹详情。
@@ -94,13 +175,37 @@ func Campaigns(h *handlers.Handlers) gin.HandlerFunc {
 // @Router       /api/code-pulse/campaigns/{campaignId} [get]
 func CampaignDetail(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !requireDB(h, c) {
-			return
-		}
-
 		cid, err := strconv.ParseUint(c.Param("campaignId"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCampaign})
+			return
+		}
+
+		ctx := c.Request.Context()
+		if sgCamps, ok := sgQueryAllCampaigns(ctx, h); ok {
+			for _, ca := range sgCamps {
+				if ca.CampaignID != cid {
+					continue
+				}
+				resp := gin.H{
+					"campaign":    ca,
+					"donor_count": ca.DonorCount,
+					"data_source": "subgraph",
+				}
+				if h.DB != nil {
+					var milestones []models.CPCampaignMilestone
+					h.DB.Where(whereCampaignID, cid).Order("milestone_index").Find(&milestones)
+					resp["milestones"] = milestones
+					var developers []models.CPCampaignDeveloper
+					h.DB.Where("campaign_id = ? AND is_active = true", cid).Find(&developers)
+					resp["developers"] = developers
+				}
+				c.JSON(http.StatusOK, resp)
+				return
+			}
+		}
+
+		if !requireDB(h, c) {
 			return
 		}
 
@@ -124,6 +229,7 @@ func CampaignDetail(h *handlers.Handlers) gin.HandlerFunc {
 			"milestones":  milestones,
 			"developers":  developers,
 			"donor_count": donorCount,
+			"data_source": "database",
 		})
 	}
 }

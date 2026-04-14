@@ -17,21 +17,26 @@ import (
 // @Router       /api/code-pulse/admin/dashboard [get]
 func AdminDashboard(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		sgPending, sgRounds, sgLive, sgOK := sgQueryAdminDashboard(ctx, h)
+
 		if !requireDB(h, c) {
+			if sgOK {
+				c.JSON(http.StatusOK, gin.H{
+					"pending_proposals":    emptyIfNilP(sgPending),
+					"pending_rounds":       emptyIfNilP(sgRounds),
+					"live_campaigns":       emptyIfNilC(sgLive),
+					"pending_milestones":   []any{},
+					"initiators":           []any{},
+					"platform_donations":   "0",
+					"platform_withdrawals": "0",
+					"data_source":          "subgraph",
+				})
+				return
+			}
 			return
 		}
-
-		var pendingProposals []models.CPProposal
-		h.DB.Where("status = ?", "pending_review").
-			Order("submitted_at DESC NULLS LAST").Limit(50).Find(&pendingProposals)
-
-		var pendingRounds []models.CPProposal
-		h.DB.Where("round_review_state = ?", "pending").
-			Order("updated_at DESC").Limit(50).Find(&pendingRounds)
-
-		var liveCampaigns []models.CPCampaign
-		h.DB.Where("state = ?", "fundraising").
-			Order("deadline_at ASC").Limit(50).Find(&liveCampaigns)
 
 		type milestoneRow struct {
 			models.CPCampaignMilestone
@@ -63,6 +68,32 @@ func AdminDashboard(h *handlers.Handlers) gin.HandlerFunc {
 			Select("COALESCE(SUM(amount_wei),0) as total").
 			Where("direction = ?", "withdrawal").Scan(&platformWithdrawals)
 
+		if sgOK {
+			c.JSON(http.StatusOK, gin.H{
+				"pending_proposals":    emptyIfNilP(sgPending),
+				"pending_rounds":       emptyIfNilP(sgRounds),
+				"live_campaigns":       emptyIfNilC(sgLive),
+				"pending_milestones":   pendingMilestones,
+				"initiators":           initiators,
+				"platform_donations":   platformDonations.Total,
+				"platform_withdrawals": platformWithdrawals.Total,
+				"data_source":          "subgraph",
+			})
+			return
+		}
+
+		var pendingProposals []models.CPProposal
+		h.DB.Where("status = ?", "pending_review").
+			Order("submitted_at DESC NULLS LAST").Limit(50).Find(&pendingProposals)
+
+		var pendingRounds []models.CPProposal
+		h.DB.Where("round_review_state = ?", "round_review_pending").
+			Order("updated_at DESC").Limit(50).Find(&pendingRounds)
+
+		var liveCampaigns []models.CPCampaign
+		h.DB.Where("state = ?", "fundraising").
+			Order("deadline_at ASC").Limit(50).Find(&liveCampaigns)
+
 		c.JSON(http.StatusOK, gin.H{
 			"pending_proposals":    pendingProposals,
 			"pending_rounds":       pendingRounds,
@@ -71,6 +102,7 @@ func AdminDashboard(h *handlers.Handlers) gin.HandlerFunc {
 			"initiators":           initiators,
 			"platform_donations":   platformDonations.Total,
 			"platform_withdrawals": platformWithdrawals.Total,
+			"data_source":          "database",
 		})
 	}
 }
@@ -94,10 +126,21 @@ func InitiatorDashboard(h *handlers.Handlers) gin.HandlerFunc {
 		h.DB.Where("LOWER(organizer_address) = ?", addr).
 			Order("created_at DESC").Limit(100).Find(&myProposals)
 
+		myProposals, sgNote := OrganizerProposalsSubgraphView(c.Request.Context(), h, addr, myProposals)
+
 		pendingReview := filterProposals(myProposals, func(p models.CPProposal) bool { return p.Status == "pending_review" })
-		approved := filterProposals(myProposals, func(p models.CPProposal) bool { return p.Status == "approved" })
-		roundPending := filterProposals(myProposals, func(p models.CPProposal) bool { return p.Status == "round_review_pending" })
-		roundApproved := filterProposals(myProposals, func(p models.CPProposal) bool { return p.Status == "round_review_approved" })
+		approvedWaiting := filterProposals(myProposals, func(p models.CPProposal) bool {
+			if p.Status != "approved" {
+				return false
+			}
+			return p.RoundReviewState == nil || *p.RoundReviewState == ""
+		})
+		roundPending := filterProposals(myProposals, func(p models.CPProposal) bool {
+			return p.RoundReviewState != nil && *p.RoundReviewState == "round_review_pending"
+		})
+		roundApproved := filterProposals(myProposals, func(p models.CPProposal) bool {
+			return p.RoundReviewState != nil && *p.RoundReviewState == "round_review_approved"
+		})
 		rejected := filterProposals(myProposals, func(p models.CPProposal) bool {
 			return p.Status == "rejected" || p.Status == "round_review_rejected"
 		})
@@ -107,19 +150,23 @@ func InitiatorDashboard(h *handlers.Handlers) gin.HandlerFunc {
 		h.DB.Where("LOWER(organizer_address) = ?", addr).
 			Order("launched_at DESC").Limit(100).Find(&myCampaigns)
 
-		fundraising := filterCampaigns(myCampaigns, func(ca models.CPCampaign) bool { return ca.State == "fundraising" })
+		fundraising, campNote := OrganizerFundraisingCampaignsSubgraphView(c.Request.Context(), h, addr, myCampaigns)
 
-		c.JSON(http.StatusOK, gin.H{
-			"proposals_total":       len(myProposals),
-			"pending_review":      pendingReview,
-			"approved_waiting":    approved,
-			"round_review_pending": roundPending,
-			"round_review_approved": roundApproved,
-			"rejected":            rejected,
-			"settled_can_follow_on": settled,
-			"fundraising_campaigns": fundraising,
-			"campaigns_total":     len(myCampaigns),
-		})
+		resp := gin.H{
+			"proposals_total":         len(myProposals),
+			"pending_review":          pendingReview,
+			"approved_waiting":        approvedWaiting,
+			"round_review_pending":    roundPending,
+			"round_review_approved":   roundApproved,
+			"rejected":                rejected,
+			"settled_can_follow_on":   settled,
+			"fundraising_campaigns":   fundraising,
+			"campaigns_total":         len(myCampaigns),
+		}
+		if sgNote != "" || campNote != "" {
+			resp["view_data_source"] = "subgraph"
+		}
+		c.JSON(http.StatusOK, resp)
 	}
 }
 
@@ -132,11 +179,25 @@ func InitiatorDashboard(h *handlers.Handlers) gin.HandlerFunc {
 // @Router       /api/code-pulse/contributors/{address}/dashboard [get]
 func ContributorDashboard(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !requireDB(h, c) {
+		addr := normalizeAddress(c.Param("address"))
+		ctx := c.Request.Context()
+
+		if sv := sgQueryContributorDashboard(ctx, h, addr); sv.OK {
+			c.JSON(http.StatusOK, gin.H{
+				"contributions_total": len(sv.All),
+				"total_donated_wei":   sv.TotalDonated.String(),
+				"all":                 sv.All,
+				"refundable":          sv.Refundable,
+				"fundraising":         sv.Fundraising,
+				"successful":          sv.Successful,
+				"data_source":         "subgraph",
+			})
 			return
 		}
 
-		addr := normalizeAddress(c.Param("address"))
+		if !requireDB(h, c) {
+			return
+		}
 
 		var contributions []models.CPContribution
 		h.DB.Where("LOWER(contributor_address) = ?", addr).
@@ -201,6 +262,7 @@ func ContributorDashboard(h *handlers.Handlers) gin.HandlerFunc {
 			"refundable":          refundable,
 			"fundraising":         fundraisingList,
 			"successful":          successfulList,
+			"data_source":         "database",
 		})
 	}
 }
@@ -214,11 +276,23 @@ func ContributorDashboard(h *handlers.Handlers) gin.HandlerFunc {
 // @Router       /api/code-pulse/developers/{address}/dashboard [get]
 func DeveloperDashboard(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !requireDB(h, c) {
+		addr := normalizeAddress(c.Param("address"))
+		ctx := c.Request.Context()
+
+		if sv := sgQueryDeveloperDashboard(ctx, h, addr); sv.OK {
+			c.JSON(http.StatusOK, gin.H{
+				"campaigns":          sv.Campaigns,
+				"claims":             sv.Claims,
+				"total_claimed_wei":  sv.TotalClaimedWei,
+				"pending_milestones": sv.PendingMilestones,
+				"data_source":        "subgraph",
+			})
 			return
 		}
 
-		addr := normalizeAddress(c.Param("address"))
+		if !requireDB(h, c) {
+			return
+		}
 
 		var devEntries []models.CPCampaignDeveloper
 		h.DB.Where("LOWER(developer_address) = ? AND is_active = true", addr).Find(&devEntries)
@@ -256,6 +330,7 @@ func DeveloperDashboard(h *handlers.Handlers) gin.HandlerFunc {
 			"claims":             claims,
 			"total_claimed_wei":  totalClaimed.Total,
 			"pending_milestones": pendingMilestones,
+			"data_source":        "database",
 		})
 	}
 }
@@ -278,4 +353,18 @@ func filterCampaigns(all []models.CPCampaign, pred func(models.CPCampaign) bool)
 		}
 	}
 	return out
+}
+
+func emptyIfNilP(s []models.CPProposal) []models.CPProposal {
+	if s == nil {
+		return []models.CPProposal{}
+	}
+	return s
+}
+
+func emptyIfNilC(s []models.CPCampaign) []models.CPCampaign {
+	if s == nil {
+		return []models.CPCampaign{}
+	}
+	return s
 }

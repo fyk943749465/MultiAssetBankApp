@@ -168,6 +168,12 @@ export function CrowdfundingWorkspacePage() {
 
       {data.initiator ? (
         <section className="space-y-4">
+          {data.initiator.view_data_source === "subgraph" ? (
+            <Callout
+              title="发起人视角：只读数据以子图为准"
+              description="提案分组、状态与「募资中」活动列表按子图事件推导，与链上展示一致。执行预检、构建与发送交易时仍以 PostgreSQL 为准；若动作提示状态不符，请等待 RPC 索引同步或稍后重试。"
+            />
+          ) : null}
           <SectionIntro eyebrow="Initiator" title="发起人视角" description="按审核与轮次状态分组展示你的提案，并单独列出正在募资的活动。" />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="提案总数" value={data.initiator.proposals_total} />

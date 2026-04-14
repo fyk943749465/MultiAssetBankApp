@@ -75,15 +75,23 @@ func TxBuild(h *handlers.Handlers) gin.HandlerFunc {
 		}
 
 		ctx := c.Request.Context()
-		from := common.HexToAddress(req.Wallet)
-		simOK, revertData, simErr := cp.Simulate(ctx, from, data, value)
+		// 模拟与链上真实 msg.sender 一致：始终使用请求中的 wallet（前端连接钱包签名发送）。
+		simFrom := txSimulationFrom(req.Wallet)
+		simOK, revertData, simErr := cp.Simulate(ctx, simFrom, data, value)
 
 		resp := gin.H{
-			"to":            cp.Address().Hex(),
-			"data":          "0x" + common.Bytes2Hex(data),
-			"value":         formatValue(value),
-			"simulation_ok": simOK,
+			"to":               cp.Address().Hex(),
+			"data":             "0x" + common.Bytes2Hex(data),
+			"value":            formatValue(value),
+			"simulation_ok":    simOK,
+			"request_wallet":   req.Wallet,
+			"tx_submit_signer": simFrom.Hex(),
+			"tx_submit_mode":   "wallet_sign",
 		}
+		if h.CodePulseServerTx && h.TxKey != nil {
+			resp["server_tx_submit_available"] = true
+		}
+		attachPackedParamHints(resp, method, args)
 		if h.Chain != nil && h.Chain.Eth() != nil {
 			if chainID, cidErr := h.Chain.Eth().ChainID(ctx); cidErr == nil {
 				resp["chain_id"] = chainID.Uint64()
@@ -96,14 +104,21 @@ func TxBuild(h *handlers.Handlers) gin.HandlerFunc {
 			return
 		}
 
-		if gas, gasErr := cp.EstimateGas(ctx, from, data, value); gasErr == nil {
+		if gas, gasErr := cp.EstimateGas(ctx, simFrom, data, value); gasErr == nil {
 			resp["gas_estimate"] = gas
 		}
 		c.JSON(http.StatusOK, resp)
 	}
 }
 
-// TxSubmit 后端代签发送交易。
+func txSimulationFrom(reqWallet string) common.Address {
+	if common.IsHexAddress(reqWallet) {
+		return common.HexToAddress(reqWallet)
+	}
+	return common.Address{}
+}
+
+// TxSubmit 后端代签发送交易（仅当 CODE_PULSE_SERVER_TX=1 且配置了 ETH_PRIVATE_KEY；默认关闭）。
 // @Summary      Submit transaction (server-signed)
 // @Tags         code-pulse
 // @Accept       json
@@ -115,6 +130,10 @@ func TxSubmit(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cp, req, method, ok := parseTxRequest(h, c)
 		if !ok {
+			return
+		}
+		if !h.CodePulseServerTx {
+			c.JSON(http.StatusGone, gin.H{"error": "Code Pulse 默认由连接的钱包签名发送；请使用 POST /api/code-pulse/tx/build 获取 calldata 后由前端广播。若确需服务端代签，设置 CODE_PULSE_SERVER_TX=1 并配置 ETH_PRIVATE_KEY。"})
 			return
 		}
 		if h.TxKey == nil {
@@ -169,7 +188,13 @@ func TxSubmit(h *handlers.Handlers) gin.HandlerFunc {
 			h.DB.Create(&attempt)
 		}
 
-		c.JSON(http.StatusOK, gin.H{"tx_hash": tx.Hash().Hex(), "action": req.Action})
+		c.JSON(http.StatusOK, gin.H{
+			"tx_hash":            tx.Hash().Hex(),
+			"action":             req.Action,
+			"from":               auth.From.Hex(),
+			"tx_submit_mode":     "server_key",
+			"request_wallet":     req.Wallet,
+		})
 	}
 }
 
@@ -205,9 +230,14 @@ func parseTxRequest(h *handlers.Handlers, c *gin.Context) (*contracts.CodePulse,
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "CodePulse 合约未配置（需要 CODE_PULSE_ADDRESS 和 ETH_RPC_URL）"})
 		return nil, TxBuildReq{}, "", false
 	}
-	var req TxBuildReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "action and wallet are required"})
+	body, err := c.GetRawData()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "read body: " + err.Error()})
+		return nil, TxBuildReq{}, "", false
+	}
+	req, err := parseTxBuildBody(body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return nil, TxBuildReq{}, "", false
 	}
 	method, ok := actionToMethod[req.Action]
@@ -218,15 +248,41 @@ func parseTxRequest(h *handlers.Handlers, c *gin.Context) (*contracts.CodePulse,
 	return h.CodePulse, req, method, true
 }
 
-func fillRevertInfo(resp gin.H, cp *contracts.CodePulse, revertData []byte, simErr error) {
-	if revertData != nil {
-		errName, errArgs, _ := cp.DecodeRevertError(revertData)
-		resp["revert_error_name"] = errName
-		resp["revert_error_args"] = errArgs
-		if msg, exists := contracts.CustomErrorMessages[errName]; exists {
-			resp["revert_message"] = msg
+// attachPackedParamHints 在响应中附带关键 uint256 的十进制字符串，便于与请求 params 对照（无需手解 calldata）。
+func attachPackedParamHints(resp gin.H, method string, args []any) {
+	switch method {
+	case "submitProposal":
+		if len(args) >= 3 {
+			if t, ok := args[1].(*big.Int); ok {
+				resp["target_wei_packed"] = t.String()
+			}
+			if d, ok := args[2].(*big.Int); ok {
+				resp["duration_seconds_packed"] = d.String()
+			}
 		}
-	} else if simErr != nil {
+	case "submitFollowOnRoundForReview":
+		if len(args) >= 4 {
+			if d, ok := args[2].(*big.Int); ok {
+				resp["duration_seconds_packed"] = d.String()
+			}
+			if t, ok := args[1].(*big.Int); ok {
+				resp["target_wei_packed"] = t.String()
+			}
+		}
+	}
+}
+
+func fillRevertInfo(resp gin.H, cp *contracts.CodePulse, revertData []byte, simErr error) {
+	if len(revertData) > 0 {
+		name, args, decErr := cp.DecodeRevertError(revertData)
+		if decErr == nil && name != "" {
+			resp["revert_error_name"] = name
+			resp["revert_error_args"] = args
+		}
+		resp["revert_message"] = cp.HumanRevertMessage(revertData)
+		return
+	}
+	if simErr != nil {
 		resp["revert_message"] = simErr.Error()
 	}
 }

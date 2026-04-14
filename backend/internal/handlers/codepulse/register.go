@@ -40,4 +40,7 @@ func Register(r *gin.Engine, h *handlers.Handlers) {
 	cp.DELETE("/admin/proposal-initiators/:address", RemoveInitiator(h))
 	cp.GET("/admin/platform-funds", PlatformFunds(h))
 	cp.GET("/admin/sync-status", SyncStatus(h))
+	cp.GET("/admin/events", AdminEventLogList(h))
+	// 与 /admin/events 相同处理器：链上事件流水对所有人只读，便于首页等公开入口使用。
+	cp.GET("/events", AdminEventLogList(h))
 }

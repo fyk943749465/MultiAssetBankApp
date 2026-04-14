@@ -1,6 +1,6 @@
 // @title           go-chain API
 // @version         0.1.0
-// @description     REST API: health, chain status, counter contract calls, bank ledger (PostgreSQL indexer + optional The Graph subgraph).
+// @description     REST API: health, chain status, counter contract calls, bank ledger (PostgreSQL indexer + optional The Graph subgraph). Code Pulse: PostgreSQL is filled by RPC log indexer by default; subgraph sync to DB is optional.
 // @BasePath        /
 //go:generate go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -d .,../../internal/handlers,../../internal/handlers/system,../../internal/handlers/chain,../../internal/handlers/bank,../../internal/handlers/contract,../../internal/handlers/codepulse -g main.go -o ../../docs --parseDependency --parseInternal
 
@@ -11,6 +11,7 @@ import (
 	"crypto/ecdsa"
 	"log"
 	"strings"
+	"time"
 
 	_ "go-chain/backend/docs"
 
@@ -32,6 +33,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
+
+	indexer.Configure(
+		time.Duration(cfg.IndexerPollSeconds)*time.Second,
+		time.Duration(cfg.IndexerFilterChunkPauseMs)*time.Millisecond,
+		cfg.IndexerMaxBlockSpan,
+	)
+	log.Printf("indexer: RPC 调频 poll=%v chunk_pause=%v max_block_span=%d（遇 429 可增大间隔，见 INDEXER_*）",
+		indexer.PollInterval(), time.Duration(cfg.IndexerFilterChunkPauseMs)*time.Millisecond, cfg.IndexerMaxBlockSpan)
 
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
@@ -115,6 +124,7 @@ func main() {
 		Subgraph:          subClient,
 		CodePulse:         codePulse,
 		SubgraphCodePulse: cpSubClient,
+		CodePulseServerTx: cfg.CodePulseServerTx,
 	}
 	r := router.New(h)
 
@@ -137,6 +147,53 @@ func main() {
 		ix := indexer.NewBank(db, ethClient.Eth(), bankAddr, *cid, cfg.BankIndexerStartBlock)
 		log.Printf("bank indexer: 已启动，合约 %s chain_id=%d（游标在首次成功同步链头后写入 chain_indexer_cursors）", bankAddr.Hex(), *cid)
 		go ix.Run(context.Background())
+	}
+
+	switch {
+	case db == nil || ethClient == nil || codePulse == nil:
+		if db == nil {
+			log.Printf("code-pulse rpc indexer: 未启动（无数据库）")
+		} else {
+			log.Printf("code-pulse rpc indexer: 未启动（需要 ETH_RPC_URL 与 CODE_PULSE_ADDRESS）")
+		}
+	default:
+		cid, errCID := ethClient.ChainID(context.Background())
+		if errCID != nil {
+			log.Printf("code-pulse rpc indexer: 未启动（读取 chainId 失败: %v）", errCID)
+			break
+		}
+		cpIx, errIx := indexer.NewCodePulseRPC(db, ethClient.Eth(), codePulse.Address(), *cid, cfg.CodePulseIndexerStartBlock)
+		if errIx != nil {
+			log.Printf("code-pulse rpc indexer: 未启动（%v）", errIx)
+			break
+		}
+		log.Printf("code-pulse rpc indexer: 已启动 chain_id=%d 合约=%s（权威 PG 读模型；起始块见 CODE_PULSE_INDEXER_START_BLOCK；与 bank 索引错峰延迟启动）",
+			*cid, codePulse.Address().Hex())
+		stagger := time.Duration(cfg.IndexerPollSeconds) * time.Second / 2
+		if stagger < 5*time.Second {
+			stagger = 5 * time.Second
+		}
+		go func() {
+			time.Sleep(stagger)
+			cpIx.Run(context.Background())
+		}()
+	}
+
+	if db != nil && cfg.CodePulseSubgraphSync && cpSubClient != nil && cpSubClient.Configured() && ethClient != nil && codePulse != nil {
+		cid, errCID := ethClient.ChainID(context.Background())
+		if errCID != nil {
+			log.Printf("code-pulse subgraph sync: 未启动（读取 chainId 失败: %v）", errCID)
+		} else {
+			poll := time.Duration(cfg.CodePulseSubgraphPollSeconds) * time.Second
+			sgIdx := indexer.NewCodePulseSubgraph(db, cpSubClient, *cid, cfg.CodePulseAddress, cfg.CodePulseSubgraphStartBlock, poll)
+			log.Printf("code-pulse subgraph sync: 已启动（可选：双写 PG；默认关闭）chain_id=%d 合约=%s 轮询=%v",
+				*cid, cfg.CodePulseAddress, poll)
+			go sgIdx.Run(context.Background())
+		}
+	} else if db != nil && !cfg.CodePulseSubgraphSync {
+		log.Printf("code-pulse subgraph sync: 未启动（CODE_PULSE_SUBGRAPH_SYNC 未开启；子图仅用于前端查询，不入库）")
+	} else if db != nil && (cpSubClient == nil || !cpSubClient.Configured()) {
+		log.Printf("code-pulse subgraph sync: 未启动（未配置 SUBGRAPH_CODE_PULSE_URL）")
 	}
 
 	log.Printf("listening on %s", cfg.ServerAddr)

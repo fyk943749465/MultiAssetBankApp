@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useChainId, useSendTransaction, useSwitchChain } from "wagmi";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { buildCodePulseTx, checkCodePulseAction, submitCodePulseTx } from "./api";
-import { formatWei, parseEthToWei, payloadToText, shortHash } from "./format";
+import { buildCodePulseTx, checkCodePulseAction } from "./api";
+import { formatDuration, formatWei, parseEthToWei, payloadToText, shortHash } from "./format";
 import type { ActionCheckResponse, CodePulseAction, TxBuildResponse, TxSubmitResponse } from "./types";
 
 type ActionFieldKind = "text" | "textarea" | "address" | "eth" | "bigint" | "boolean" | "multiline_list";
@@ -73,6 +74,10 @@ export function ActionFormCard({
   validate,
   onSuccess,
 }: ActionFormCardProps) {
+  const chainId = useChainId();
+  const { switchChainAsync } = useSwitchChain();
+  const { sendTransactionAsync, isPending: walletSendPending } = useSendTransaction();
+
   const [values, setValues] = useState<Record<string, PrimitiveValue>>(() => toFieldRecord(fields, presetParams));
   const [prepareLoading, setPrepareLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -80,6 +85,8 @@ export function ActionFormCard({
   const [checkResult, setCheckResult] = useState<ActionCheckResponse | null>(null);
   const [buildResult, setBuildResult] = useState<TxBuildResponse | null>(null);
   const [submitResult, setSubmitResult] = useState<TxSubmitResponse | null>(null);
+  const prepareInFlightRef = useRef(false);
+  const submitInFlightRef = useRef(false);
 
   const mergedParams = useMemo(() => {
     const params: Record<string, unknown> = {};
@@ -109,7 +116,11 @@ export function ActionFormCard({
       if (!text) continue;
 
       if (field.kind === "eth") {
-        params[field.key] = parseEthToWei(text);
+        try {
+          params[field.key] = parseEthToWei(text);
+        } catch {
+          // 输入过程中的中间态（如 "0."）会解析失败；不在 render 中抛错，避免整页白屏。提交时由必填校验捕获。
+        }
         continue;
       }
 
@@ -180,6 +191,8 @@ export function ActionFormCard({
   }
 
   async function handlePrepare() {
+    if (prepareInFlightRef.current) return;
+    prepareInFlightRef.current = true;
     setPrepareLoading(true);
     setError(null);
     setSubmitResult(null);
@@ -207,36 +220,68 @@ export function ActionFormCard({
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      prepareInFlightRef.current = false;
       setPrepareLoading(false);
     }
   }
 
   async function handleSubmit() {
+    if (submitInFlightRef.current) return;
+    if (submitResult) {
+      setError("该交易已提交成功，请勿重复发送。如需再次操作请刷新页面。");
+      return;
+    }
+    submitInFlightRef.current = true;
     setSubmitLoading(true);
     setError(null);
     try {
       validateBeforeRequest();
-      const build = buildResult
-        ? buildResult
-        : await buildCodePulseTx({
-            action,
-            wallet: wallet!,
-            params: mergedParams,
-          });
-      setBuildResult(build);
-      if (!build.simulation_ok) {
-        throw new Error(build.revert_message || "模拟未通过，无法提交");
-      }
-      const result = await submitCodePulseTx({
+      const build = await buildCodePulseTx({
         action,
         wallet: wallet!,
         params: mergedParams,
       });
+      setBuildResult(build);
+      if (!build.simulation_ok) {
+        throw new Error(build.revert_message || "模拟未通过，无法提交");
+      }
+
+      const targetChain = build.chain_id;
+      if (targetChain != null && chainId !== targetChain) {
+        if (!switchChainAsync) {
+          throw new Error(`请先在钱包中切换到 chainId=${targetChain} 的网络`);
+        }
+        await switchChainAsync({ chainId: targetChain });
+      }
+
+      const valueWei =
+        build.value === "" || build.value === "0" || build.value === undefined ? 0n : BigInt(build.value);
+
+      const hash = await sendTransactionAsync({
+        to: build.to as `0x${string}`,
+        data: build.data as `0x${string}`,
+        value: valueWei,
+        gas: build.gas_estimate != null ? BigInt(build.gas_estimate) : undefined,
+      });
+
+      const result: TxSubmitResponse = {
+        tx_hash: hash,
+        action,
+        from: wallet!,
+        tx_submit_mode: "wallet_sign",
+        request_wallet: wallet!,
+      };
       setSubmitResult(result);
       onSuccess?.(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/user rejected|denied|cancel/i.test(msg)) {
+        setError("已在钱包中取消签名或发送");
+      } else {
+        setError(msg);
+      }
     } finally {
+      submitInFlightRef.current = false;
       setSubmitLoading(false);
     }
   }
@@ -318,10 +363,20 @@ export function ActionFormCard({
           </Alert>
         ) : null}
 
+        {wallet ? (
+          <Alert>
+            <AlertTitle>钱包签名发送</AlertTitle>
+            <AlertDescription className="text-sm text-muted-foreground">
+              点击「{submitLabel}」将在钱包中请求确认；链上交易的 <code className="rounded bg-muted px-1">from</code>{" "}
+              为当前连接地址，合约中 <code className="rounded bg-muted px-1">msg.sender</code>（如提案发起人）与之一致。
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            disabled={prepareLoading || submitLoading || !wallet}
+            disabled={prepareLoading || submitLoading || walletSendPending || !wallet}
             onClick={() => void handlePrepare()}
           >
             {prepareLoading ? "构建中…" : prepareLabel}
@@ -329,13 +384,19 @@ export function ActionFormCard({
           <Button
             disabled={
               submitLoading ||
+              walletSendPending ||
               prepareLoading ||
               !wallet ||
+              !!submitResult ||
               (buildResult ? !buildResult.simulation_ok : false)
             }
             onClick={() => void handleSubmit()}
           >
-            {submitLoading ? "发送中…" : submitLabel}
+            {submitLoading || walletSendPending
+              ? "钱包确认中…"
+              : submitResult
+                ? "已提交"
+                : submitLabel}
           </Button>
         </div>
 
@@ -406,6 +467,33 @@ export function ActionFormCard({
                     {buildResult.gas_estimate ?? "N/A"}
                   </p>
                 </div>
+                {buildResult.tx_submit_signer ? (
+                  <div className="sm:col-span-2">
+                    <p className="text-xs text-muted-foreground">链上发送方（当前钱包 / msg.sender）</p>
+                    <p className="mt-1 font-mono text-sm text-foreground break-all">
+                      {buildResult.tx_submit_signer}
+                    </p>
+                  </div>
+                ) : null}
+                {buildResult.target_wei_packed ? (
+                  <div className="sm:col-span-2">
+                    <p className="text-xs text-muted-foreground">打包目标（wei）</p>
+                    <p className="mt-1 font-mono text-sm text-foreground break-all">
+                      {buildResult.target_wei_packed}
+                    </p>
+                  </div>
+                ) : null}
+                {buildResult.duration_seconds_packed ? (
+                  <div className="sm:col-span-2">
+                    <p className="text-xs text-muted-foreground">打包众筹时长（秒）</p>
+                    <p className="mt-1 font-mono text-sm text-foreground">
+                      {buildResult.duration_seconds_packed}{" "}
+                      <span className="text-muted-foreground">
+                        （约 {formatDuration(Number(buildResult.duration_seconds_packed))}）
+                      </span>
+                    </p>
+                  </div>
+                ) : null}
               </div>
               {buildResult.revert_message ? (
                 <p className="text-sm text-warning">
@@ -427,8 +515,14 @@ export function ActionFormCard({
         {submitResult ? (
           <Alert>
             <AlertTitle>交易已提交</AlertTitle>
-            <AlertDescription className="font-mono">
-              {submitResult.tx_hash}
+            <AlertDescription className="space-y-2">
+              <p className="font-mono break-all">{submitResult.tx_hash}</p>
+              {submitResult.from ? (
+                <p className="text-sm text-muted-foreground">
+                  链上 <code className="rounded bg-muted px-1">from</code>:{" "}
+                  <span className="font-mono text-foreground">{submitResult.from}</span>
+                </p>
+              ) : null}
             </AlertDescription>
           </Alert>
         ) : null}

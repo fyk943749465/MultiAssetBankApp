@@ -19,6 +19,7 @@ import type {
   ProposalListParams,
   ProposalListResponse,
   SyncStatusResponse,
+  AdminEventsResponse,
   TxAttemptResponse,
   TxBuildRequest,
   TxBuildResponse,
@@ -207,3 +208,27 @@ export function fetchCodePulsePlatformFunds(page = 1, pageSize = 20) {
 export function fetchCodePulseSyncStatus() {
   return getJSON<SyncStatusResponse>("/api/code-pulse/admin/sync-status");
 }
+
+export type AdminEventsParams = {
+  page?: number;
+  page_size?: number;
+  event_name?: string;
+  proposal_id?: number;
+  campaign_id?: number;
+};
+
+/** 链上事件流水（公开 GET，优先子图；与 /admin/events 同源） */
+export function fetchCodePulseEventLog(params: AdminEventsParams = {}) {
+  return getJSON<AdminEventsResponse>(
+    `/api/code-pulse/events${buildQuery({
+      page: params.page,
+      page_size: params.page_size,
+      event_name: params.event_name,
+      proposal_id: params.proposal_id,
+      campaign_id: params.campaign_id,
+    })}`,
+  );
+}
+
+/** @deprecated 请使用 fetchCodePulseEventLog；仍指向同一后端路径族 */
+export const fetchCodePulseAdminEvents = fetchCodePulseEventLog;

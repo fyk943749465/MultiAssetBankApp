@@ -77,7 +77,11 @@ export function CrowdfundingAdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [address, isConnected, page]);
+  }, [
+    address,
+    isConnected,
+    page,
+  ]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -147,7 +151,19 @@ export function CrowdfundingAdminPage() {
             <StatCard label="待审核提案" value={data.dashboard.pending_proposals.length} />
             <StatCard label="待审核轮次" value={data.dashboard.pending_rounds.length} />
             <StatCard label="待审批里程碑" value={data.dashboard.pending_milestones.length} />
-            <StatCard label="事件总数" value={data.sync.event_count} />
+            <StatCard
+              label="事件总数"
+              value={data.sync.event_count}
+              hint={
+                data.sync.event_count_source === "subgraph" &&
+                data.sync.event_count_database != null &&
+                data.sync.event_count_database !== data.sync.event_count
+                  ? `子图口径；索引库 ${data.sync.event_count_database} 条（可能缺部署早期块）`
+                  : data.sync.event_count_source === "subgraph"
+                    ? "子图口径（与链上事件一致）"
+                    : "PostgreSQL 索引库（子图未配置或计数失败时）"
+              }
+            />
           </div>
         </CardContent>
       </Card>
@@ -158,10 +174,10 @@ export function CrowdfundingAdminPage() {
         <SectionIntro eyebrow="Pending Proposals" title="提案审核队列" description="管理员可对 pending_review 的 proposal 执行 approve / reject。" />
         {data.dashboard.pending_proposals.length > 0 ? (
           data.dashboard.pending_proposals.map((proposal) => (
-            <div key={proposal.proposal_id} className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-              <ProposalCard proposal={proposal} />
-              <div className="space-y-4">
-                <ActionFormCard title="审核通过提案" action="review_proposal" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id), approve: true }} description="通过后，发起人即可进入首轮 funding round 提交阶段。" onSuccess={() => void load()} />
+            <div key={proposal.proposal_id} className="space-y-3">
+              <ProposalCard proposal={proposal} compact />
+              <div className="grid gap-3 md:grid-cols-2">
+                <ActionFormCard title="审核通过" action="review_proposal" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id), approve: true }} description="通过后，发起人即可进入首轮 funding round 提交。" onSuccess={() => void load()} />
                 <ActionFormCard title="拒绝提案" action="review_proposal" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id), approve: false }} description="拒绝会让提案离开待审核队列。" onSuccess={() => void load()} />
               </div>
             </div>
@@ -175,11 +191,11 @@ export function CrowdfundingAdminPage() {
         <SectionIntro eyebrow="Pending Rounds" title="Funding Round 审核队列" description="对于 round_review_state=pending 的提案，管理员可批准或拒绝新的 funding round。" />
         {data.dashboard.pending_rounds.length > 0 ? (
           data.dashboard.pending_rounds.map((proposal) => (
-            <div key={proposal.proposal_id} className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-              <ProposalCard proposal={proposal} />
-              <div className="space-y-4">
-                <ActionFormCard title="批准 funding round" action="review_funding_round" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id), approve: true }} onSuccess={() => void load()} />
-                <ActionFormCard title="拒绝 funding round" action="review_funding_round" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id), approve: false }} onSuccess={() => void load()} />
+            <div key={proposal.proposal_id} className="space-y-3">
+              <ProposalCard proposal={proposal} compact />
+              <div className="grid gap-3 md:grid-cols-2">
+                <ActionFormCard title="批准 round" action="review_funding_round" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id), approve: true }} onSuccess={() => void load()} />
+                <ActionFormCard title="拒绝 round" action="review_funding_round" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id), approve: false }} onSuccess={() => void load()} />
               </div>
             </div>
           ))
@@ -193,16 +209,17 @@ export function CrowdfundingAdminPage() {
         {data.dashboard.pending_milestones.length > 0 ? (
           <div className="grid gap-4 xl:grid-cols-2">
             {data.dashboard.pending_milestones.map((milestone) => (
-              <Card key={`${milestone.campaign_id}-${milestone.milestone_index}`}>
-                <CardContent>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Campaign #{milestone.campaign_id}</p>
-                  <h3 className="text-base font-medium text-foreground">{milestone.github_url}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{milestone.description}</p>
-                  <div className="mt-4">
-                    <ActionFormCard title={`审批 Milestone ${milestone.milestone_index + 1}`} action="approve_milestone" wallet={address} campaignId={milestone.campaign_id} milestoneIndex={milestone.milestone_index} presetParams={{ campaign_id: String(milestone.campaign_id), milestone_index: String(milestone.milestone_index) }} onSuccess={() => void load()} />
-                  </div>
-                </CardContent>
-              </Card>
+              <ActionFormCard
+                key={`${milestone.campaign_id}-${milestone.milestone_index}`}
+                title={`Campaign #${milestone.campaign_id} — Milestone ${milestone.milestone_index + 1}`}
+                action="approve_milestone"
+                wallet={address}
+                campaignId={milestone.campaign_id}
+                milestoneIndex={milestone.milestone_index}
+                description={milestone.description || milestone.github_url || undefined}
+                presetParams={{ campaign_id: String(milestone.campaign_id), milestone_index: String(milestone.milestone_index) }}
+                onSuccess={() => void load()}
+              />
             ))}
           </div>
         ) : (
@@ -303,6 +320,12 @@ export function CrowdfundingAdminPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Callout
+          tone="neutral"
+          title="链上事件流水已移至首页 Home"
+          description="所有访客在众筹模块「Home」Tab 可查看同一套事件列表（公开接口 /api/code-pulse/events）。此处仍保留「事件总数」统计（来自同步状态）。"
+        />
 
         <div className="grid gap-4 xl:grid-cols-2">
           <ActionFormCard title="Pause 合约" action="pause" wallet={address} />

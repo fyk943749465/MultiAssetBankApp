@@ -59,56 +59,56 @@ func (j *JSONB) UnmarshalJSON(data []byte) error {
 
 // CPProposal 提案主表：保存每个众筹提案的聚合态。
 type CPProposal struct {
-	ProposalID                uint64     `gorm:"primaryKey;column:proposal_id" json:"proposal_id"`
-	OrganizerAddress          string     `gorm:"size:42;not null;index:idx_cp_proposals_organizer_address" json:"organizer_address"`
-	GithubURL                 string     `gorm:"not null" json:"github_url"`
-	GithubURLHash             *string    `json:"github_url_hash"`
-	TargetWei                 string     `gorm:"type:numeric(78,0);not null" json:"target_wei"`
-	DurationSeconds           int64      `gorm:"not null" json:"duration_seconds"`
-	Status                    string     `gorm:"not null;index:idx_cp_proposals_status" json:"status"`
-	StatusCode                int        `gorm:"not null" json:"status_code"`
-	LastCampaignID            *uint64    `gorm:"index:idx_cp_proposals_last_campaign_id" json:"last_campaign_id"`
-	CurrentRoundCount         int        `gorm:"not null;default:0" json:"current_round_count"`
-	PendingRoundTargetWei     *string    `gorm:"type:numeric(78,0)" json:"pending_round_target_wei"`
-	PendingRoundDurationSecs  *int64     `gorm:"column:pending_round_duration_seconds" json:"pending_round_duration_seconds"`
-	RoundReviewState          *string    `json:"round_review_state"`
-	RoundReviewStateCode      *int       `json:"round_review_state_code"`
-	SubmittedTxHash           *string    `gorm:"size:66" json:"submitted_tx_hash"`
-	SubmittedBlockNumber      *uint64    `json:"submitted_block_number"`
-	SubmittedAt               *time.Time `json:"submitted_at"`
-	ReviewedAt                *time.Time `json:"reviewed_at"`
-	ApprovedAt                *time.Time `json:"approved_at"`
-	RejectedAt                *time.Time `json:"rejected_at"`
-	CreatedAt                 time.Time  `json:"created_at"`
-	UpdatedAt                 time.Time  `json:"updated_at"`
+	ProposalID               uint64     `gorm:"primaryKey;column:proposal_id" json:"proposal_id"`
+	OrganizerAddress         string     `gorm:"size:42;not null;index:idx_cp_proposals_organizer_address" json:"organizer_address"`
+	GithubURL                string     `gorm:"not null" json:"github_url"`
+	GithubURLHash            *string    `json:"github_url_hash"`
+	TargetWei                string     `gorm:"type:numeric(78,0);not null" json:"target_wei"`
+	DurationSeconds          int64      `gorm:"not null" json:"duration_seconds"`
+	Status                   string     `gorm:"not null;index:idx_cp_proposals_status" json:"status"`
+	StatusCode               int        `gorm:"not null" json:"status_code"`
+	LastCampaignID           *uint64    `gorm:"index:idx_cp_proposals_last_campaign_id" json:"last_campaign_id"`
+	CurrentRoundCount        int        `gorm:"not null;default:0" json:"current_round_count"`
+	PendingRoundTargetWei    *string    `gorm:"type:numeric(78,0)" json:"pending_round_target_wei"`
+	PendingRoundDurationSecs *int64     `gorm:"column:pending_round_duration_seconds" json:"pending_round_duration_seconds"`
+	RoundReviewState         *string    `json:"round_review_state"`
+	RoundReviewStateCode     *int       `json:"round_review_state_code"`
+	SubmittedTxHash          *string    `gorm:"size:66" json:"submitted_tx_hash"`
+	SubmittedBlockNumber     *uint64    `json:"submitted_block_number"`
+	SubmittedAt              *time.Time `json:"submitted_at"`
+	ReviewedAt               *time.Time `json:"reviewed_at"`
+	ApprovedAt               *time.Time `json:"approved_at"`
+	RejectedAt               *time.Time `json:"rejected_at"`
+	CreatedAt                time.Time  `json:"created_at"`
+	UpdatedAt                time.Time  `json:"updated_at"`
 }
 
 func (CPProposal) TableName() string { return "cp_proposals" }
 
 // CPCampaign 众筹轮次表：每次 launchApprovedRound 后创建一条记录。
 type CPCampaign struct {
-	CampaignID            uint64     `gorm:"primaryKey;column:campaign_id" json:"campaign_id"`
-	ProposalID            uint64     `gorm:"not null;index:idx_cp_campaigns_proposal_id" json:"proposal_id"`
-	RoundIndex            int        `gorm:"not null" json:"round_index"`
-	OrganizerAddress      string     `gorm:"size:42;not null;index:idx_cp_campaigns_organizer_address" json:"organizer_address"`
-	GithubURL             string     `gorm:"not null" json:"github_url"`
-	TargetWei             string     `gorm:"type:numeric(78,0);not null" json:"target_wei"`
-	DeadlineAt            time.Time  `gorm:"not null;index:idx_cp_campaigns_deadline_at" json:"deadline_at"`
-	AmountRaisedWei       string     `gorm:"type:numeric(78,0);not null;default:0" json:"amount_raised_wei"`
-	TotalWithdrawnWei     string     `gorm:"type:numeric(78,0);not null;default:0" json:"total_withdrawn_wei"`
-	UnclaimedRefundPoolWei string   `gorm:"type:numeric(78,0);not null;default:0" json:"unclaimed_refund_pool_wei"`
-	State                 string     `gorm:"not null;index:idx_cp_campaigns_state" json:"state"`
-	StateCode             int        `gorm:"not null" json:"state_code"`
-	DonorCount            int        `gorm:"not null;default:0" json:"donor_count"`
-	DeveloperCount        int        `gorm:"not null;default:0" json:"developer_count"`
-	FinalizedAt           *time.Time `json:"finalized_at"`
-	SuccessAt             *time.Time `json:"success_at"`
-	DormantFundsSwept     bool       `gorm:"not null;default:false" json:"dormant_funds_swept"`
-	LaunchedTxHash        string     `gorm:"size:66;not null" json:"launched_tx_hash"`
-	LaunchedBlockNumber   uint64     `gorm:"not null" json:"launched_block_number"`
-	LaunchedAt            time.Time  `gorm:"not null" json:"launched_at"`
-	CreatedAt             time.Time  `json:"created_at"`
-	UpdatedAt             time.Time  `json:"updated_at"`
+	CampaignID             uint64     `gorm:"primaryKey;column:campaign_id" json:"campaign_id"`
+	ProposalID             uint64     `gorm:"not null;index:idx_cp_campaigns_proposal_id" json:"proposal_id"`
+	RoundIndex             int        `gorm:"not null" json:"round_index"`
+	OrganizerAddress       string     `gorm:"size:42;not null;index:idx_cp_campaigns_organizer_address" json:"organizer_address"`
+	GithubURL              string     `gorm:"not null" json:"github_url"`
+	TargetWei              string     `gorm:"type:numeric(78,0);not null" json:"target_wei"`
+	DeadlineAt             time.Time  `gorm:"not null;index:idx_cp_campaigns_deadline_at" json:"deadline_at"`
+	AmountRaisedWei        string     `gorm:"type:numeric(78,0);not null;default:0" json:"amount_raised_wei"`
+	TotalWithdrawnWei      string     `gorm:"type:numeric(78,0);not null;default:0" json:"total_withdrawn_wei"`
+	UnclaimedRefundPoolWei string     `gorm:"type:numeric(78,0);not null;default:0" json:"unclaimed_refund_pool_wei"`
+	State                  string     `gorm:"not null;index:idx_cp_campaigns_state" json:"state"`
+	StateCode              int        `gorm:"not null" json:"state_code"`
+	DonorCount             int        `gorm:"not null;default:0" json:"donor_count"`
+	DeveloperCount         int        `gorm:"not null;default:0" json:"developer_count"`
+	FinalizedAt            *time.Time `json:"finalized_at"`
+	SuccessAt              *time.Time `json:"success_at"`
+	DormantFundsSwept      bool       `gorm:"not null;default:false" json:"dormant_funds_swept"`
+	LaunchedTxHash         string     `gorm:"size:66;not null" json:"launched_tx_hash"`
+	LaunchedBlockNumber    uint64     `gorm:"not null" json:"launched_block_number"`
+	LaunchedAt             time.Time  `gorm:"not null" json:"launched_at"`
+	CreatedAt              time.Time  `json:"created_at"`
+	UpdatedAt              time.Time  `json:"updated_at"`
 }
 
 func (CPCampaign) TableName() string { return "cp_campaigns" }
@@ -207,7 +207,7 @@ type CPEventLog struct {
 	TxHash          string    `gorm:"size:66;not null;uniqueIndex:uq_cp_event_log_tx_log" json:"tx_hash"`
 	LogIndex        int       `gorm:"not null;uniqueIndex:uq_cp_event_log_tx_log" json:"log_index"`
 	BlockNumber     uint64    `gorm:"not null;index:idx_cp_event_log_block_number_desc" json:"block_number"`
-	BlockTimestamp  time.Time  `gorm:"not null" json:"block_timestamp"`
+	BlockTimestamp  time.Time `gorm:"not null" json:"block_timestamp"`
 	Payload         JSONB     `gorm:"type:jsonb;not null" json:"payload"`
 	Source          string    `gorm:"not null;default:'subgraph'" json:"source"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -221,7 +221,12 @@ type CPSyncCursor struct {
 	LastBlockNumber    *uint64    `json:"last_block_number"`
 	LastBlockTimestamp *time.Time `json:"last_block_timestamp"`
 	LastEventID        *string    `json:"last_event_id"`
-	UpdatedAt          time.Time  `json:"updated_at"`
+	// 子图可达性（与链上重组无关；重组需运维策略，见 README）
+	LastSubgraphQueryOKAt     *time.Time `json:"last_subgraph_query_ok_at"`
+	LastSubgraphError         *string    `json:"last_subgraph_error"`
+	LastSubgraphErrorAt       *time.Time `json:"last_subgraph_error_at"`
+	SubgraphConsecutiveErrors int        `gorm:"not null;default:0" json:"subgraph_consecutive_errors"`
+	UpdatedAt                 time.Time  `json:"updated_at"`
 }
 
 func (CPSyncCursor) TableName() string { return "cp_sync_cursors" }
@@ -281,24 +286,24 @@ func (CPWalletRole) TableName() string { return "cp_wallet_roles" }
 
 // CPTxAttempt 交易尝试表：记录每次链上动作的完整生命周期与 custom error 解码。
 type CPTxAttempt struct {
-	ID                 uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	WalletAddress      string     `gorm:"size:42;not null" json:"wallet_address"`
-	RoleSnapshot       JSONB      `gorm:"type:jsonb;not null" json:"role_snapshot"`
-	Action             string     `gorm:"not null" json:"action"`
-	ProposalID         *uint64    `json:"proposal_id"`
-	CampaignID         *uint64    `json:"campaign_id"`
-	MilestoneIndex     *int       `json:"milestone_index"`
-	RequestPayload     JSONB      `gorm:"type:jsonb;not null" json:"request_payload"`
-	SimulationOK       *bool      `json:"simulation_ok"`
-	RevertErrorName    *string    `json:"revert_error_name"`
-	RevertErrorArgs    JSONB      `gorm:"type:jsonb" json:"revert_error_args"`
-	TxHash             *string    `gorm:"size:66;index:idx_cp_tx_attempts_tx_hash" json:"tx_hash"`
-	TxStatus           string     `gorm:"not null" json:"tx_status"`
-	ReceiptBlockNumber *uint64    `json:"receipt_block_number"`
-	FailureStage       *string    `json:"failure_stage"`
-	FailureMessage     *string    `json:"failure_message"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
+	ID                 uint64    `gorm:"primaryKey;autoIncrement" json:"id"`
+	WalletAddress      string    `gorm:"size:42;not null" json:"wallet_address"`
+	RoleSnapshot       JSONB     `gorm:"type:jsonb;not null" json:"role_snapshot"`
+	Action             string    `gorm:"not null" json:"action"`
+	ProposalID         *uint64   `json:"proposal_id"`
+	CampaignID         *uint64   `json:"campaign_id"`
+	MilestoneIndex     *int      `json:"milestone_index"`
+	RequestPayload     JSONB     `gorm:"type:jsonb;not null" json:"request_payload"`
+	SimulationOK       *bool     `json:"simulation_ok"`
+	RevertErrorName    *string   `json:"revert_error_name"`
+	RevertErrorArgs    JSONB     `gorm:"type:jsonb" json:"revert_error_args"`
+	TxHash             *string   `gorm:"size:66;index:idx_cp_tx_attempts_tx_hash" json:"tx_hash"`
+	TxStatus           string    `gorm:"not null" json:"tx_status"`
+	ReceiptBlockNumber *uint64   `json:"receipt_block_number"`
+	FailureStage       *string   `json:"failure_stage"`
+	FailureMessage     *string   `json:"failure_message"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 func (CPTxAttempt) TableName() string { return "cp_tx_attempts" }
@@ -328,14 +333,14 @@ func (CPPlatformFundMovement) TableName() string { return "cp_platform_fund_move
 
 // CPSnapshotDaily 每日统计快照表：为首页 dashboard 提供历史趋势数据。
 type CPSnapshotDaily struct {
-	SnapshotDate            string `gorm:"primaryKey;type:date;column:snapshot_date" json:"snapshot_date"`
-	ProposalCount           int    `gorm:"not null" json:"proposal_count"`
-	CampaignCount           int    `gorm:"not null" json:"campaign_count"`
-	LiveCampaignCount       int    `gorm:"not null" json:"live_campaign_count"`
-	SuccessfulCampaignCount int    `gorm:"not null" json:"successful_campaign_count"`
-	FailedCampaignCount     int    `gorm:"not null" json:"failed_campaign_count"`
-	TotalRaisedWei          string `gorm:"type:numeric(78,0);not null" json:"total_raised_wei"`
-	TotalRefundedWei        string `gorm:"type:numeric(78,0);not null" json:"total_refunded_wei"`
+	SnapshotDate            string    `gorm:"primaryKey;type:date;column:snapshot_date" json:"snapshot_date"`
+	ProposalCount           int       `gorm:"not null" json:"proposal_count"`
+	CampaignCount           int       `gorm:"not null" json:"campaign_count"`
+	LiveCampaignCount       int       `gorm:"not null" json:"live_campaign_count"`
+	SuccessfulCampaignCount int       `gorm:"not null" json:"successful_campaign_count"`
+	FailedCampaignCount     int       `gorm:"not null" json:"failed_campaign_count"`
+	TotalRaisedWei          string    `gorm:"type:numeric(78,0);not null" json:"total_raised_wei"`
+	TotalRefundedWei        string    `gorm:"type:numeric(78,0);not null" json:"total_refunded_wei"`
 	CreatedAt               time.Time `json:"created_at"`
 }
 

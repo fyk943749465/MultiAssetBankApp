@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import type { Connector } from "wagmi";
 import { sepolia } from "wagmi/chains";
@@ -18,6 +19,31 @@ function shortAddress(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 type ConnectWalletProps = {
   readonly compact?: boolean;
 };
@@ -28,6 +54,19 @@ export function ConnectWallet({ compact = false }: ConnectWalletProps) {
   const { connect, connectors, isPending, error, reset } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
+  const [addressCopied, setAddressCopied] = useState(false);
+
+  const copyAddress = useCallback(async () => {
+    if (!address) return;
+    const ok = await copyTextToClipboard(address);
+    if (!ok) return;
+    setAddressCopied(true);
+    globalThis.setTimeout(() => setAddressCopied(false), 2000);
+  }, [address]);
+
+  useEffect(() => {
+    if (!address) setAddressCopied(false);
+  }, [address]);
 
   const wrongNetwork = isConnected && chainId !== sepolia.id;
 
@@ -47,12 +86,20 @@ export function ConnectWallet({ compact = false }: ConnectWalletProps) {
             )}
             {isConnected && address && (
               <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5">
-                <span className="font-mono text-xs font-medium text-primary sm:text-sm" title={address}>
-                  <span className="sm:hidden">{shortAddress(address)}</span>
-                  <span className="hidden max-w-[200px] truncate sm:inline" title={address}>
-                    {address}
+                <button
+                  type="button"
+                  onClick={() => void copyAddress()}
+                  className="group max-w-full rounded-md border border-transparent px-1 py-0.5 text-left font-mono text-xs font-medium text-primary transition-colors hover:border-primary/25 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:text-sm"
+                  title="点击复制完整地址"
+                  aria-label={`复制地址 ${address}`}
+                >
+                  <span className="sm:hidden">
+                    {addressCopied ? "已复制" : shortAddress(address)}
                   </span>
-                </span>
+                  <span className="hidden max-w-[200px] truncate sm:inline">
+                    {addressCopied ? "已复制" : address}
+                  </span>
+                </button>
                 <Badge variant={wrongNetwork ? "destructive" : "secondary"}>
                   {wrongNetwork ? "网络不对" : "Sepolia"}
                 </Badge>
@@ -122,9 +169,15 @@ export function ConnectWallet({ compact = false }: ConnectWalletProps) {
             )}
             {isConnected && address && (
               <div className="space-y-1.5">
-                <p className="truncate font-mono text-sm font-medium text-primary" title={address}>
-                  {address}
-                </p>
+                <button
+                  type="button"
+                  onClick={() => void copyAddress()}
+                  className="w-full truncate rounded-md border border-transparent px-1 py-0.5 text-left font-mono text-sm font-medium text-primary transition-colors hover:border-primary/25 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  title="点击复制完整地址"
+                  aria-label={`复制地址 ${address}`}
+                >
+                  {addressCopied ? "已复制" : address}
+                </button>
                 <p className="text-xs text-muted-foreground">
                   链 ID: <span className="font-mono text-foreground">{chainId}</span>
                   {wrongNetwork && (

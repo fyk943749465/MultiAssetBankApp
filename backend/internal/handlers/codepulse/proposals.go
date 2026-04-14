@@ -2,7 +2,9 @@ package codepulse
 
 import (
 	"net/http"
+	"sort"
 	"strconv"
+	"time"
 
 	"go-chain/backend/internal/handlers"
 	"go-chain/backend/internal/models"
@@ -24,11 +26,45 @@ import (
 // @Router       /api/code-pulse/proposals [get]
 func Proposals(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		page, pageSize, offset := parsePagination(c)
+
+		if sgRows, ok := sgQueryAllProposals(ctx, h); ok {
+			filtered := sgFilterProposals(sgRows, c)
+			total := int64(len(filtered))
+
+			switch c.DefaultQuery("sort", "submitted_at_desc") {
+			case "submitted_at_asc":
+				sort.Slice(filtered, func(i, j int) bool {
+					return proposalSubmitTime(filtered[i]).Before(proposalSubmitTime(filtered[j]))
+				})
+			default:
+				sort.Slice(filtered, func(i, j int) bool {
+					return proposalSubmitTime(filtered[i]).After(proposalSubmitTime(filtered[j]))
+				})
+			}
+
+			end := offset + pageSize
+			if end > len(filtered) {
+				end = len(filtered)
+			}
+			paged := []models.CPProposal{}
+			if offset < len(filtered) {
+				paged = filtered[offset:end]
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"proposals":   paged,
+				"pagination":  Pagination{Page: page, PageSize: pageSize, Total: total},
+				"data_source": "subgraph",
+			})
+			return
+		}
+
 		if !requireDB(h, c) {
 			return
 		}
 
-		page, pageSize, offset := parsePagination(c)
 		q := h.DB.Model(&models.CPProposal{})
 
 		if v := c.Query("status"); v != "" {
@@ -61,10 +97,50 @@ func Proposals(h *handlers.Handlers) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"proposals":  rows,
-			"pagination": Pagination{Page: page, PageSize: pageSize, Total: total},
+			"proposals":   rows,
+			"pagination":  Pagination{Page: page, PageSize: pageSize, Total: total},
+			"data_source": "database",
 		})
 	}
+}
+
+func sgFilterProposals(all []models.CPProposal, c *gin.Context) []models.CPProposal {
+	status := c.Query("status")
+	organizer := c.Query("organizer")
+	reviewState := c.Query("review_state")
+
+	if status == "" && organizer == "" && reviewState == "" {
+		return all
+	}
+
+	orgNorm := ""
+	if organizer != "" {
+		orgNorm = normalizeAddress(organizer)
+	}
+
+	out := make([]models.CPProposal, 0, len(all))
+	for _, p := range all {
+		if status != "" && p.Status != status {
+			continue
+		}
+		if orgNorm != "" && normalizeAddress(p.OrganizerAddress) != orgNorm {
+			continue
+		}
+		if reviewState != "" {
+			if p.RoundReviewState == nil || *p.RoundReviewState != reviewState {
+				continue
+			}
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+func proposalSubmitTime(p models.CPProposal) time.Time {
+	if p.SubmittedAt != nil {
+		return *p.SubmittedAt
+	}
+	return p.CreatedAt
 }
 
 // ProposalDetail 提案详情。
@@ -77,13 +153,36 @@ func Proposals(h *handlers.Handlers) gin.HandlerFunc {
 // @Router       /api/code-pulse/proposals/{proposalId} [get]
 func ProposalDetail(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !requireDB(h, c) {
-			return
-		}
-
 		pid, err := strconv.ParseUint(c.Param("proposalId"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid proposal_id"})
+			return
+		}
+
+		ctx := c.Request.Context()
+		if sgProposals, ok := sgQueryAllProposals(ctx, h); ok {
+			for _, p := range sgProposals {
+				if p.ProposalID != pid {
+					continue
+				}
+				resp := gin.H{
+					"proposal":    p,
+					"data_source": "subgraph",
+				}
+				if h.DB != nil {
+					var milestones []models.CPProposalMilestone
+					h.DB.Where(whereProposalID, pid).Order("round_ordinal, milestone_index").Find(&milestones)
+					resp["milestones"] = milestones
+					var campaigns []models.CPCampaign
+					h.DB.Where(whereProposalID, pid).Order("round_index").Find(&campaigns)
+					resp["campaigns"] = campaigns
+				}
+				c.JSON(http.StatusOK, resp)
+				return
+			}
+		}
+
+		if !requireDB(h, c) {
 			return
 		}
 
@@ -100,9 +199,10 @@ func ProposalDetail(h *handlers.Handlers) gin.HandlerFunc {
 		h.DB.Where(whereProposalID, pid).Order("round_index").Find(&campaigns)
 
 		c.JSON(http.StatusOK, gin.H{
-			"proposal":   proposal,
-			"milestones": milestones,
-			"campaigns":  campaigns,
+			"proposal":    proposal,
+			"milestones":  milestones,
+			"campaigns":   campaigns,
+			"data_source": "database",
 		})
 	}
 }

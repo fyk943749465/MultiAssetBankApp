@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -13,8 +14,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 //go:embed codepulse.json
@@ -27,8 +30,13 @@ type CodePulse struct {
 	client  *ethclient.Client
 }
 
+// LoadCodePulseABI 解析嵌入的 CodePulse ABI（供测试或独立 ABI 编码使用）。
+func LoadCodePulseABI() (abi.ABI, error) {
+	return abi.JSON(bytes.NewReader(codePulseABIJSON))
+}
+
 func NewCodePulse(client *ethclient.Client, address common.Address) (*CodePulse, error) {
-	parsed, err := abi.JSON(bytes.NewReader(codePulseABIJSON))
+	parsed, err := LoadCodePulseABI()
 	if err != nil {
 		return nil, fmt.Errorf("parse CodePulse ABI: %w", err)
 	}
@@ -107,14 +115,70 @@ func (cp *CodePulse) Simulate(ctx context.Context, from common.Address, data []b
 	}
 	_, err := cp.client.CallContract(ctx, msg, nil)
 	if err != nil {
-		errMsg := err.Error()
-		// go-ethereum wraps revert data in the error; try to extract hex bytes
-		if revertData := extractRevertData(errMsg); revertData != nil {
+		if revertData := extractCallRevertData(err); len(revertData) > 0 {
 			return false, revertData, nil
 		}
 		return false, nil, err
 	}
 	return true, nil, nil
+}
+
+// extractCallRevertData 从 eth_call 失败错误里取出 revert payload（兼容 Geth、嵌套 JSON-RPC data 等）。
+func extractCallRevertData(err error) []byte {
+	if err == nil {
+		return nil
+	}
+	if data, ok := ethclient.RevertErrorData(err); ok {
+		return data
+	}
+	var de rpc.DataError
+	if errors.As(err, &de) {
+		if parsed := parseJSONRPCRevertPayload(de.ErrorData()); len(parsed) > 0 {
+			return parsed
+		}
+	}
+	return extractRevertData(err.Error())
+}
+
+func parseJSONRPCRevertPayload(v interface{}) []byte {
+	if v == nil {
+		return nil
+	}
+	switch t := v.(type) {
+	case string:
+		if b, err := hexutil.Decode(t); err == nil {
+			return b
+		}
+	case []byte:
+		return t
+	case map[string]interface{}:
+		for _, key := range []string{"data", "cause", "revertData", "error", "errorMessage"} {
+			if inner, ok := t[key]; ok {
+				if parsed := parseJSONRPCRevertPayload(inner); len(parsed) > 0 {
+					return parsed
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// HumanRevertMessage 将 revert 字节解码为面向用户的说明（自定义 error、Error(string) 或 selector 提示）。
+func (cp *CodePulse) HumanRevertMessage(data []byte) string {
+	if len(data) < 4 {
+		return ""
+	}
+	name, _, decErr := cp.DecodeRevertError(data)
+	if decErr == nil && name != "" {
+		if msg, ok := CustomErrorMessages[name]; ok {
+			return msg
+		}
+		return name
+	}
+	if s, err := abi.UnpackRevert(data); err == nil && s != "" {
+		return s
+	}
+	return fmt.Sprintf("未识别的合约回退（错误选择器 0x%x）", data[:4])
 }
 
 // EstimateGas 估算 gas。
@@ -161,18 +225,16 @@ func (cp *CodePulse) DecodeRevertError(data []byte) (name string, args map[strin
 		return "", nil, fmt.Errorf("revert data too short: %d bytes", len(data))
 	}
 
-	var selector [4]byte
-	copy(selector[:], data[:4])
-	selectorHash := common.BytesToHash(selector[:])
-
+	sel := data[:4]
 	for errName, abiErr := range cp.abi.Errors {
-		if abiErr.ID != selectorHash {
+		// abiErr.ID 为完整 Keccak-256；revert 前 4 字节为选择器。勿用 BytesToHash(4)，其会把字节右对齐到 Hash 尾部，导致永远对不上。
+		if !bytes.Equal(abiErr.ID[:4], sel) {
 			continue
 		}
 		return errName, unpackErrorArgs(abiErr, data[4:]), nil
 	}
 
-	return "", nil, fmt.Errorf("unknown error selector: 0x%x", selector)
+	return "", nil, fmt.Errorf("unknown error selector: 0x%x", sel)
 }
 
 func unpackErrorArgs(abiErr abi.Error, payload []byte) map[string]any {

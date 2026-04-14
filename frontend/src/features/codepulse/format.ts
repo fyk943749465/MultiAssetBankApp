@@ -102,3 +102,22 @@ export function parseEthToWei(value: string): string {
   const fraction = BigInt((fractionPart + "0".repeat(18)).slice(0, 18) || "0");
   return (whole * ONE_ETH + fraction).toString();
 }
+
+/** 常用网络的区块浏览器交易链接；未知 chainId 时回退 Sepolia（与本地开发默认一致）。 */
+export function explorerTxUrl(chainId: number, txHash: string): string {
+  const hash = txHash.startsWith("0x") ? txHash : `0x${txHash}`;
+  switch (chainId) {
+    case 1:
+      return `https://etherscan.io/tx/${hash}`;
+    case 11155111:
+      return `https://sepolia.etherscan.io/tx/${hash}`;
+    case 17000:
+      return `https://holesky.etherscan.io/tx/${hash}`;
+    case 8453:
+      return `https://basescan.org/tx/${hash}`;
+    case 84532:
+      return `https://sepolia.basescan.org/tx/${hash}`;
+    default:
+      return `https://sepolia.etherscan.io/tx/${hash}`;
+  }
+}

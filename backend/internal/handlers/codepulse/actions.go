@@ -213,9 +213,9 @@ func checkActionState(h *handlers.Handlers, req ActionCheckReq) (ok bool, state,
 	case "submit_follow_on_round_for_review":
 		return checkProposalStatus(h, req.ProposalID, "settled", "上一轮尚未结算")
 	case "review_funding_round":
-		return checkRoundReviewState(h, req.ProposalID, "pending", "没有待审核的 funding round")
+		return checkRoundReviewState(h, req.ProposalID, "round_review_pending", "没有待审核的 funding round")
 	case "launch_approved_round":
-		return checkRoundReviewState(h, req.ProposalID, "approved", "funding round 尚未审核通过")
+		return checkRoundReviewState(h, req.ProposalID, "round_review_approved", "funding round 尚未审核通过")
 	case "donate":
 		return checkCampaignState(h, req.CampaignID, "fundraising", "当前不在众筹阶段")
 	case "finalize_campaign":

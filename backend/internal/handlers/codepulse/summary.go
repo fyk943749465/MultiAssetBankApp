@@ -7,6 +7,7 @@ import (
 	"go-chain/backend/internal/handlers"
 	"go-chain/backend/internal/models"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,6 +19,24 @@ import (
 // @Router       /api/code-pulse/summary [get]
 func Summary(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		if sg := sgQuerySummary(ctx, h); sg.OK {
+			c.JSON(http.StatusOK, gin.H{
+				"proposal_total":     sg.ProposalTotal,
+				"pending_review":     sg.PendingReview,
+				"approved_waiting":   sg.Approved,
+				"campaign_total":     sg.CampaignTotal,
+				"fundraising":        sg.Fundraising,
+				"successful":         sg.Successful,
+				"failed":             sg.Failed,
+				"total_raised_wei":   sg.TotalRaisedWei.String(),
+				"total_refunded_wei": sg.TotalRefundWei.String(),
+				"data_source":        "subgraph",
+			})
+			return
+		}
+
 		if !requireDB(h, c) {
 			return
 		}
@@ -62,6 +81,7 @@ func Summary(h *handlers.Handlers) gin.HandlerFunc {
 			"failed":             failed,
 			"total_raised_wei":   raised.Total,
 			"total_refunded_wei": refunded.Total,
+			"data_source":        "database",
 		})
 	}
 }
@@ -128,10 +148,17 @@ func Config(h *handlers.Handlers) gin.HandlerFunc {
 			if len(delays) == int(milestoneNum) { milestoneUnlockDelays = delays }
 		}
 
+		serverTx := h.CodePulseServerTx && h.TxKey != nil
+		relayer := ""
+		if serverTx {
+			relayer = crypto.PubkeyToAddress(h.TxKey.PublicKey).Hex()
+		}
 		c.JSON(http.StatusOK, gin.H{
-			"contract_address":            contractAddr,
-			"contract_configured":         h.CodePulse != nil,
-			"subgraph_configured":         h.SubgraphCodePulse != nil,
+			"contract_address":               contractAddr,
+			"contract_configured":            h.CodePulse != nil,
+			"subgraph_configured":            h.SubgraphCodePulse != nil,
+			"code_pulse_server_tx_enabled":   serverTx,
+			"server_tx_relayer_address":      relayer,
 			"owner_address":               ownerAddr,
 			"paused":                      paused,
 			"state_source":                stateSource,
