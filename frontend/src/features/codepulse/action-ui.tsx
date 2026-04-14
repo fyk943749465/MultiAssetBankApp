@@ -302,18 +302,18 @@ export function ActionFormCard({
 
               if (field.kind === "boolean") {
                 return (
-                  <label
-                    key={field.key}
-                    className="flex items-center gap-3 rounded-lg border bg-card/50 px-3 py-3"
-                  >
-                    <Checkbox
-                      checked={Boolean(value)}
-                      onCheckedChange={(checked) =>
-                        handleBooleanChange(field.key, Boolean(checked))
-                      }
-                    />
-                    <span className="text-sm text-foreground">{field.label}</span>
-                  </label>
+                  <div key={field.key} className="space-y-1 rounded-lg border bg-card/50 px-3 py-3">
+                    <label className="flex items-center gap-3">
+                      <Checkbox
+                        checked={Boolean(value)}
+                        onCheckedChange={(checked) =>
+                          handleBooleanChange(field.key, checked === true)
+                        }
+                      />
+                      <span className="text-sm text-foreground">{field.label}</span>
+                    </label>
+                    {field.helpText ? <p className="text-xs text-muted-foreground pl-9">{field.helpText}</p> : null}
+                  </div>
                 );
               }
 
@@ -431,6 +431,14 @@ export function ActionFormCard({
             {checkResult.reason_message ? (
               <p className="text-warning">{checkResult.reason_message}</p>
             ) : null}
+            {checkResult.advisory_message ? (
+              <Alert className="border-amber-500/40 bg-amber-500/5">
+                <AlertTitle className="text-amber-900 dark:text-amber-100">提示</AlertTitle>
+                <AlertDescription className="text-sm text-muted-foreground">
+                  {checkResult.advisory_message}
+                </AlertDescription>
+              </Alert>
+            ) : null}
           </div>
         ) : null}
 
@@ -495,6 +503,14 @@ export function ActionFormCard({
                   </div>
                 ) : null}
               </div>
+              {buildResult.advisory_message ? (
+                <Alert className="border-amber-500/40 bg-amber-500/5">
+                  <AlertTitle className="text-amber-900 dark:text-amber-100">提示</AlertTitle>
+                  <AlertDescription className="text-sm text-muted-foreground">
+                    {buildResult.advisory_message}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
               {buildResult.revert_message ? (
                 <p className="text-sm text-warning">
                   {buildResult.revert_message}

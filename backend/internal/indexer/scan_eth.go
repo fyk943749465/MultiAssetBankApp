@@ -78,8 +78,14 @@ func ethHeaderByNumber(ctx context.Context, eth *ethclient.Client, num *big.Int)
 
 // ethConfirmedTip 返回索引可安全扫到的最高区块号：优先 PoS 的 finalized，其次 safe，最后回退为 latest - fallbackConfirmations。
 func ethConfirmedTip(ctx context.Context, eth *ethclient.Client, latest *types.Header) (uint64, error) {
+	n, _, err := ethConfirmedTipWithSource(ctx, eth, latest)
+	return n, err
+}
+
+// ethConfirmedTipWithSource 与 ethConfirmedTip 相同，并返回实际采用的标签（供管理台展示）。
+func ethConfirmedTipWithSource(ctx context.Context, eth *ethclient.Client, latest *types.Header) (uint64, string, error) {
 	if latest == nil {
-		return 0, errors.New("indexer: nil latest header")
+		return 0, "", errors.New("indexer: nil latest header")
 	}
 	latestNum := latest.Number.Uint64()
 
@@ -96,14 +102,53 @@ func ethConfirmedTip(ctx context.Context, eth *ethclient.Client, latest *types.H
 	}
 
 	if n, ok := try(int64(rpc.FinalizedBlockNumber)); ok {
-		return n, nil
+		return n, "finalized", nil
 	}
 	if n, ok := try(int64(rpc.SafeBlockNumber)); ok {
-		return n, nil
+		return n, "safe", nil
 	}
 
 	if latestNum > fallbackConfirmations {
-		return latestNum - fallbackConfirmations, nil
+		return latestNum - fallbackConfirmations, "latest_minus_12", nil
 	}
-	return 0, nil
+	return 0, "latest_minus_12", nil
+}
+
+// ChainRPCHeads 供管理台与游标对照：latest / safe / finalized 及索引器使用的 confirmed 上界。
+type ChainRPCHeads struct {
+	LatestBlock       uint64  `json:"latest_block"`
+	SafeBlock         *uint64 `json:"safe_block,omitempty"`
+	FinalizedBlock    *uint64 `json:"finalized_block,omitempty"`
+	ConfirmedTipBlock uint64  `json:"confirmed_tip_block"`
+	ConfirmedTipSource string `json:"confirmed_tip_source"` // finalized | safe | latest_minus_12
+}
+
+// FetchChainRPCHeads 查询当前 RPC 上的链头（与扫块索引用同一套 ethHeaderByNumber 重试）。
+func FetchChainRPCHeads(ctx context.Context, eth *ethclient.Client) (ChainRPCHeads, error) {
+	var out ChainRPCHeads
+	if eth == nil {
+		return out, errors.New("indexer: nil eth client")
+	}
+	latestHdr, err := ethHeaderByNumber(ctx, eth, nil)
+	if err != nil {
+		return out, err
+	}
+	out.LatestBlock = latestHdr.Number.Uint64()
+
+	if h, e := ethHeaderByNumber(ctx, eth, big.NewInt(int64(rpc.SafeBlockNumber))); e == nil && h != nil && h.Number != nil {
+		n := h.Number.Uint64()
+		out.SafeBlock = &n
+	}
+	if h, e := ethHeaderByNumber(ctx, eth, big.NewInt(int64(rpc.FinalizedBlockNumber))); e == nil && h != nil && h.Number != nil {
+		n := h.Number.Uint64()
+		out.FinalizedBlock = &n
+	}
+
+	tip, src, err := ethConfirmedTipWithSource(ctx, eth, latestHdr)
+	if err != nil {
+		return out, err
+	}
+	out.ConfirmedTipBlock = tip
+	out.ConfirmedTipSource = src
+	return out, nil
 }

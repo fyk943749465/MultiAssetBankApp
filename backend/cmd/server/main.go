@@ -20,6 +20,7 @@ import (
 	"go-chain/backend/internal/contracts"
 	"go-chain/backend/internal/database"
 	"go-chain/backend/internal/handlers"
+	cpcodepulse "go-chain/backend/internal/handlers/codepulse"
 	"go-chain/backend/internal/indexer"
 	"go-chain/backend/internal/router"
 	"go-chain/backend/internal/subgraph"
@@ -194,6 +195,16 @@ func main() {
 		log.Printf("code-pulse subgraph sync: 未启动（CODE_PULSE_SUBGRAPH_SYNC 未开启；子图仅用于前端查询，不入库）")
 	} else if db != nil && (cpSubClient == nil || !cpSubClient.Configured()) {
 		log.Printf("code-pulse subgraph sync: 未启动（未配置 SUBGRAPH_CODE_PULSE_URL）")
+	}
+
+	if cfg.CodePulseInitiatorReconcileSeconds > 0 && db != nil {
+		if (cpSubClient != nil && cpSubClient.Configured()) || codePulse != nil {
+			every := time.Duration(cfg.CodePulseInitiatorReconcileSeconds) * time.Second
+			log.Printf("code-pulse initiator reconcile: 已启动 interval=%v（对齐 cp_wallet_roles 与链上白名单；子图优先，失败则 RPC）", every)
+			go cpcodepulse.RunProposalInitiatorReconcileLoop(context.Background(), h, every)
+		} else {
+			log.Printf("code-pulse initiator reconcile: 未启动（需 SUBGRAPH_CODE_PULSE_URL 或 CODE_PULSE_ADDRESS）")
+		}
 	}
 
 	log.Printf("listening on %s", cfg.ServerAddr)

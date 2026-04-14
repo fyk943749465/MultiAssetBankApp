@@ -21,7 +21,7 @@ export function CrowdfundingPage() {
 
   return (
     <div className="space-y-10">
-      <div className="glass-card rounded-[24px] p-6 sm:p-8 animate-in fade-in slide-in-from-top-4 duration-700">
+      <div className="glass-card rounded-[24px] p-6 sm:p-8 animate-in fade-in slide-in-from-top-4 duration-300">
         <h2 className="mb-2 text-[10px] font-bold uppercase tracking-[0.3em] text-primary/80 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
           Crowdfunding Module
@@ -48,7 +48,7 @@ export function CrowdfundingPage() {
         </nav>
       </div>
 
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 fill-mode-both">
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 delay-75 fill-mode-both">
         <Outlet />
       </div>
     </div>

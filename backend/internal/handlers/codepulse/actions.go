@@ -1,7 +1,10 @@
 package codepulse
 
 import (
+	"encoding/json"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"go-chain/backend/internal/handlers"
 	"go-chain/backend/internal/models"
@@ -10,10 +13,11 @@ import (
 )
 
 const (
-	errMissingProposalID = "缺少 proposal_id"
-	errMissingCampaignID = "缺少 campaign_id"
-	reasonRoleMissing    = "role_missing"
-	reasonStateInvalid   = "state_invalid"
+	errMissingProposalID        = "缺少 proposal_id"
+	errMissingCampaignID        = "缺少 campaign_id"
+	reasonRoleMissing           = "role_missing"
+	reasonStateInvalid          = "state_invalid"
+	reasonInitiatorRevokePolicy = "initiator_revoke_blocked"
 )
 
 var validActions = map[string]bool{
@@ -83,6 +87,9 @@ type ActionCheckResp struct {
 	ReasonMessage   string `json:"reason_message,omitempty"`
 	RevertErrorName string `json:"revert_error_name,omitempty"`
 	RevertErrorArgs any    `json:"revert_error_args,omitempty"`
+	// AdvisoryCode / AdvisoryMessage 为不阻止交易的补充说明（如撤销 initiator 对已有 organizer 提案的影响）。
+	AdvisoryCode    string `json:"advisory_code,omitempty"`
+	AdvisoryMessage string `json:"advisory_message,omitempty"`
 }
 
 // ActionCheck 动作预检。
@@ -112,26 +119,138 @@ func ActionCheck(h *handlers.Handlers) gin.HandlerFunc {
 
 		resp := ActionCheckResp{RequiredRole: actionRoleMap[req.Action]}
 
-		if requiredRole := actionRoleMap[req.Action]; requiredRole != "" {
-			if !checkWalletRole(h, normalizeAddress(req.Wallet), requiredRole, req.ProposalID, req.CampaignID) {
-				resp.ReasonCode = reasonRoleMissing
-				resp.ReasonMessage = "当前钱包缺少所需角色: " + requiredRole
-				c.JSON(http.StatusOK, resp)
-				return
-			}
-		}
-
-		stateOK, state, reason := checkActionState(h, req)
-		resp.CurrentState = state
-		if !stateOK {
-			resp.ReasonCode = reasonStateInvalid
-			resp.ReasonMessage = reason
+		allowed, cur, rc, rm := codePulseActionGate(h, req)
+		resp.CurrentState = cur
+		if !allowed {
+			resp.ReasonCode = rc
+			resp.ReasonMessage = rm
 			c.JSON(http.StatusOK, resp)
 			return
 		}
 
 		resp.Allowed = true
+		if ac, am := setProposalInitiatorRevokeAdvisory(h, req); ac != "" {
+			resp.AdvisoryCode = ac
+			resp.AdvisoryMessage = am
+		}
 		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// codePulseActionGate 角色 + 读库状态预检（PostgreSQL 为准）；供 actions/check 与 tx/build、tx/submit 共用。
+func codePulseActionGate(h *handlers.Handlers, req ActionCheckReq) (allowed bool, currentState, reasonCode, reasonMsg string) {
+	if requiredRole := actionRoleMap[req.Action]; requiredRole != "" {
+		if !checkWalletRole(h, normalizeAddress(req.Wallet), requiredRole, req.ProposalID, req.CampaignID) {
+			return false, "", reasonRoleMissing, "当前钱包缺少所需角色: " + requiredRole
+		}
+	}
+	if req.Action == "set_proposal_initiator" {
+		if blocked, msg := setProposalInitiatorRevokeBlocked(h, req); blocked {
+			return false, "", reasonInitiatorRevokePolicy, msg
+		}
+	}
+	stateOK, state, reason := checkActionState(h, req)
+	if !stateOK {
+		msg := reason
+		if stateInvalidNeedsSyncHint(req.Action, reason) {
+			msg = reason + actionStateSyncHint(h)
+		}
+		return false, state, reasonStateInvalid, msg
+	}
+	return true, state, "", ""
+}
+
+// TxBuildToActionCheckReq 将 tx/build 请求体中的 params 映射到 ActionCheckReq（proposal_id 等在 params 内）。
+func TxBuildToActionCheckReq(req TxBuildReq) ActionCheckReq {
+	ac := ActionCheckReq{
+		Action: req.Action,
+		Wallet: req.Wallet,
+		Params: req.Params,
+	}
+	if req.Params == nil {
+		return ac
+	}
+	if v, ok := req.Params["proposal_id"]; ok {
+		if pid := anyUint64Ptr(v); pid != nil {
+			ac.ProposalID = pid
+		}
+	}
+	if v, ok := req.Params["campaign_id"]; ok {
+		if cid := anyUint64Ptr(v); cid != nil {
+			ac.CampaignID = cid
+		}
+	}
+	if v, ok := req.Params["milestone_index"]; ok {
+		if mi := anyIntPtr(v); mi != nil {
+			ac.MilestoneIndex = mi
+		}
+	}
+	return ac
+}
+
+func anyUint64Ptr(v any) *uint64 {
+	switch t := v.(type) {
+	case float64:
+		if t < 0 {
+			return nil
+		}
+		u := uint64(t)
+		return &u
+	case json.Number:
+		n, err := strconv.ParseUint(t.String(), 10, 64)
+		if err != nil {
+			return nil
+		}
+		return &n
+	case string:
+		n, err := strconv.ParseUint(strings.TrimSpace(t), 10, 64)
+		if err != nil {
+			return nil
+		}
+		return &n
+	case int:
+		if t < 0 {
+			return nil
+		}
+		u := uint64(t)
+		return &u
+	case int64:
+		if t < 0 {
+			return nil
+		}
+		u := uint64(t)
+		return &u
+	case uint64:
+		return &t
+	default:
+		return nil
+	}
+}
+
+func anyIntPtr(v any) *int {
+	switch t := v.(type) {
+	case float64:
+		i := int(t)
+		return &i
+	case json.Number:
+		n, err := strconv.Atoi(t.String())
+		if err != nil {
+			return nil
+		}
+		return &n
+	case string:
+		n, err := strconv.Atoi(strings.TrimSpace(t))
+		if err != nil {
+			return nil
+		}
+		return &n
+	case int:
+		return &t
+	case int64:
+		i := int(t)
+		return &i
+	default:
+		return nil
 	}
 }
 
@@ -204,16 +323,42 @@ func isDonorOf(h *handlers.Handlers, addr string, campaignID *uint64) bool {
 	return count > 0
 }
 
+// stateInvalidNeedsSyncHint 对「依赖 cp_proposals / cp_campaigns 等读模型」的失败补充同步说明；参数缺失类不追加。
+func stateInvalidNeedsSyncHint(action, reason string) bool {
+	if reason == errMissingProposalID || reason == errMissingCampaignID {
+		return false
+	}
+	if strings.HasPrefix(reason, "缺少") {
+		return false
+	}
+	switch action {
+	case "review_proposal", "submit_first_round_for_review", "submit_follow_on_round_for_review",
+		"review_funding_round", "launch_approved_round",
+		"donate", "finalize_campaign", "claim_refund":
+		return true
+	default:
+		return false
+	}
+}
+
+// actionStateSyncHint 在「状态预检失败」时追加说明：读库可能尚未追上链上/子图展示。
+func actionStateSyncHint(h *handlers.Handlers) string {
+	if sgAvailable(h) {
+		return " 数据可能尚未从链上完全写入 PostgreSQL（例如界面来自子图而索引库未跟上），因此暂时不能预检和构建；请稍后再试，或开启子图同步写库并等待同步完成。"
+	}
+	return " 数据可能尚未从链上同步到数据库，因此暂时不能预检和构建；请等待 RPC 索引写入后再试。"
+}
+
 func checkActionState(h *handlers.Handlers, req ActionCheckReq) (ok bool, state, reason string) {
 	switch req.Action {
 	case "review_proposal":
-		return checkProposalStatus(h, req.ProposalID, "pending_review", "提案不在待审核状态")
+		return checkProposalStatus(h, req.ProposalID, "pending_review", "提案在数据库中不是「待审核」状态")
 	case "submit_first_round_for_review":
 		return checkProposalStatus(h, req.ProposalID, "approved", "提案尚未审核通过")
 	case "submit_follow_on_round_for_review":
 		return checkProposalStatus(h, req.ProposalID, "settled", "上一轮尚未结算")
 	case "review_funding_round":
-		return checkRoundReviewState(h, req.ProposalID, "round_review_pending", "没有待审核的 funding round")
+		return checkReviewFundingRound(h, req)
 	case "launch_approved_round":
 		return checkRoundReviewState(h, req.ProposalID, "round_review_approved", "funding round 尚未审核通过")
 	case "donate":
@@ -239,7 +384,10 @@ func checkProposalStatus(h *handlers.Handlers, proposalID *uint64, expect, msg s
 	h.DB.Model(&models.CPProposal{}).Select("status").
 		Where(whereProposalID, *proposalID).Scan(&status)
 	if status != expect {
-		return false, status, msg
+		if strings.TrimSpace(status) == "" {
+			return false, status, msg + "（数据库中尚无该提案记录或状态为空）"
+		}
+		return false, status, msg + "（数据库中当前为：" + status + "）"
 	}
 	return true, status, ""
 }
@@ -259,6 +407,70 @@ func checkRoundReviewState(h *handlers.Handlers, proposalID *uint64, expect, msg
 		return false, s, msg
 	}
 	return true, *state, ""
+}
+
+// paramsApproveTrue 解析 review_funding_round / review_proposal 等传入的 approve；缺省视为 true（与前端默认勾选一致）。
+func paramsApproveTrue(req ActionCheckReq) bool {
+	m, ok := req.Params.(map[string]any)
+	if !ok || m == nil {
+		return true
+	}
+	v, ok := m["approve"]
+	if !ok {
+		return true
+	}
+	switch t := v.(type) {
+	case bool:
+		return t
+	case string:
+		s := strings.TrimSpace(strings.ToLower(t))
+		if s == "" {
+			return true
+		}
+		return s != "false" && s != "0" && s != "no"
+	case float64:
+		return t != 0
+	case int:
+		return t != 0
+	case int64:
+		return t != 0
+	default:
+		return true
+	}
+}
+
+// checkReviewFundingRound 与合约一致：approve=true 仅当 PG 为 round_review_pending；approve=false 允许待审拒绝或已通过未上线时的撤销。
+func checkReviewFundingRound(h *handlers.Handlers, req ActionCheckReq) (bool, string, string) {
+	if req.ProposalID == nil {
+		return false, "", errMissingProposalID
+	}
+	okP, st, msg := checkProposalStatus(h, req.ProposalID, "approved", "提案在数据库中不是「已通过」状态，不能审核本轮众筹")
+	if !okP {
+		return okP, st, msg
+	}
+	if paramsApproveTrue(req) {
+		return checkRoundReviewState(h, req.ProposalID, "round_review_pending", "没有待审核的 funding round")
+	}
+	return checkReviewFundingRoundRejectOrRevoke(h, req.ProposalID)
+}
+
+func checkReviewFundingRoundRejectOrRevoke(h *handlers.Handlers, proposalID *uint64) (bool, string, string) {
+	if proposalID == nil {
+		return false, "", errMissingProposalID
+	}
+	var rs *string
+	h.DB.Model(&models.CPProposal{}).Select("round_review_state").
+		Where(whereProposalID, *proposalID).Scan(&rs)
+	if rs == nil || strings.TrimSpace(*rs) == "" {
+		return false, "", "没有可拒绝或撤销的 funding round（数据库轮次审核态为空，可能索引尚未写入）"
+	}
+	s := strings.TrimSpace(*rs)
+	switch s {
+	case "round_review_pending", "round_review_approved":
+		return true, s, ""
+	default:
+		return false, s, "当前轮次状态不允许拒绝或撤销（须为「待审核本轮」或「本轮已通过、尚未上线」）"
+	}
 }
 
 func checkCampaignState(h *handlers.Handlers, campaignID *uint64, expect, msg string) (bool, string, string) {

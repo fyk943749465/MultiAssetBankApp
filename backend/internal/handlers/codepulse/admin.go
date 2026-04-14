@@ -24,16 +24,12 @@ func ListInitiators(h *handlers.Handlers) gin.HandlerFunc {
 			return
 		}
 
-		var roles []models.CPWalletRole
-		h.DB.Where("role = ? AND scope_type = ? AND active = true", "proposal_initiator", "global").
-			Order("created_at DESC").Find(&roles)
-
-		addrs := make([]string, 0, len(roles))
-		for _, r := range roles {
-			addrs = append(addrs, r.WalletAddress)
-		}
-
-		c.JSON(http.StatusOK, gin.H{"initiators": addrs, "total": len(addrs)})
+		addrs, source := proposalInitiatorAllowlist(c.Request.Context(), h)
+		c.JSON(http.StatusOK, gin.H{
+			"initiators":   addrs,
+			"total":        len(addrs),
+			"data_source":  source,
+		})
 	}
 }
 
@@ -189,6 +185,12 @@ func SyncStatus(h *handlers.Handlers) gin.HandlerFunc {
 			if n, err := indexer.CountCodePulseSubgraphEventEntities(c.Request.Context(), h.SubgraphCodePulse); err == nil {
 				out["event_count"] = n
 				out["event_count_source"] = "subgraph"
+			}
+		}
+
+		if h.Chain != nil && h.Chain.Eth() != nil {
+			if heads, err := indexer.FetchChainRPCHeads(c.Request.Context(), h.Chain.Eth()); err == nil {
+				out["chain_heads"] = heads
 			}
 		}
 

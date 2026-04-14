@@ -62,6 +62,21 @@ func TxBuild(h *handlers.Handlers) gin.HandlerFunc {
 			return
 		}
 
+		if h.DB == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "数据库未配置，无法按 PostgreSQL 读模型预检交易状态"})
+			return
+		}
+		ac := TxBuildToActionCheckReq(req)
+		allowed, _, rc, rm := codePulseActionGate(h, ac)
+		if !allowed {
+			st := http.StatusConflict
+			if rc == reasonRoleMissing {
+				st = http.StatusForbidden
+			}
+			c.JSON(st, gin.H{"error": rm, "reason_code": rc, "stage": "db_pre_check"})
+			return
+		}
+
 		args, value, err := newParamExtractor(req.Params).packForMethod(method)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "参数编码失败: " + err.Error()})
@@ -87,6 +102,10 @@ func TxBuild(h *handlers.Handlers) gin.HandlerFunc {
 			"request_wallet":   req.Wallet,
 			"tx_submit_signer": simFrom.Hex(),
 			"tx_submit_mode":   "wallet_sign",
+		}
+		if acode, amsg := setProposalInitiatorRevokeAdvisory(h, ac); amsg != "" {
+			resp["advisory_code"] = acode
+			resp["advisory_message"] = amsg
 		}
 		if h.CodePulseServerTx && h.TxKey != nil {
 			resp["server_tx_submit_available"] = true
@@ -130,6 +149,20 @@ func TxSubmit(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cp, req, method, ok := parseTxRequest(h, c)
 		if !ok {
+			return
+		}
+		if h.DB == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "数据库未配置，无法按 PostgreSQL 读模型预检交易状态"})
+			return
+		}
+		ac := TxBuildToActionCheckReq(req)
+		allowed, _, rc, rm := codePulseActionGate(h, ac)
+		if !allowed {
+			st := http.StatusConflict
+			if rc == reasonRoleMissing {
+				st = http.StatusForbidden
+			}
+			c.JSON(st, gin.H{"error": rm, "reason_code": rc, "stage": "db_pre_check"})
 			return
 		}
 		if !h.CodePulseServerTx {

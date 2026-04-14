@@ -50,7 +50,12 @@ export function CrowdfundingHomePage() {
           fetchCodePulseSummary(),
           fetchCodePulseConfig(),
           fetchCodePulseCampaigns({ state: "fundraising", page_size: 3, sort: "deadline_at_asc" }),
-          fetchCodePulseProposals({ status: "approved", page_size: 3, sort: "submitted_at_desc" }),
+          fetchCodePulseProposals({
+            status: "approved",
+            waiting_launch_queue: true,
+            page_size: 3,
+            sort: "submitted_at_desc",
+          }),
           fetchCodePulseCampaigns({ state: "failed_refundable", page_size: 3, sort: "launched_at_desc" }),
         ]);
         if (cancelled) return;
@@ -145,7 +150,7 @@ export function CrowdfundingHomePage() {
       </section>
 
       <section className="space-y-4">
-        <SectionIntro eyebrow="Launch Queue" title="已通过、待发起的提案" description="这些提案已经通过审核，但还未进入正式募资轮次。" />
+        <SectionIntro eyebrow="Launch Queue" title="已通过、待发起的提案" description="尚未开启过众筹，或本轮参数已通过审核、等待发起人上线（与后端 waiting_launch_queue 一致）。" />
         {data.approvedProposals.length > 0 ? (
           <div className="grid gap-4 xl:grid-cols-2">
             {data.approvedProposals.map((proposal) => (
@@ -153,7 +158,7 @@ export function CrowdfundingHomePage() {
             ))}
           </div>
         ) : (
-          <EmptyState title="暂无待发起提案" description="当前没有 status=approved 的提案。" />
+          <EmptyState title="暂无待发起提案" description="当前没有处于「待进入募资」状态的已通过提案。" />
         )}
       </section>
 

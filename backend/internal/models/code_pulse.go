@@ -127,6 +127,18 @@ type CPContribution struct {
 
 func (CPContribution) TableName() string { return "cp_contributions" }
 
+// CampaignDonationEntry 单笔捐款（子图 Donated / cp_event_log），用于活动贡献列表按笔展示。
+type CampaignDonationEntry struct {
+	CampaignID         uint64    `json:"campaign_id"`
+	ContributorAddress string    `json:"contributor_address"`
+	AmountWei          string    `json:"amount_wei"`
+	DonatedAt          time.Time `json:"donated_at"`
+	TxHash             string    `json:"tx_hash"`
+	LogIndex           int       `json:"log_index"`
+	RefundClaimedWei   string    `json:"refund_claimed_wei"`
+	Source             string    `json:"data_source"` // subgraph | database
+}
+
 // ---------------------------------------------------------------------------
 // 6. 里程碑与成员
 // ---------------------------------------------------------------------------

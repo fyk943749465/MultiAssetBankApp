@@ -43,7 +43,7 @@ func OrganizerProposalsSubgraphView(ctx context.Context, h *handlers.Handlers, o
 	var sub0 struct {
 		ProposalSubmitteds []struct {
 			sgPropSubmitted
-			BlockNumber string `json:"blockNumber"`
+			BlockNumber flexGraphScalar `json:"blockNumber"`
 		} `json:"proposalSubmitteds"`
 	}
 	if json.Unmarshal(raw, &sub0) != nil || len(sub0.ProposalSubmitteds) == 0 {
@@ -53,7 +53,7 @@ func OrganizerProposalsSubgraphView(ctx context.Context, h *handlers.Handlers, o
 	ids := make([]string, 0, len(sub0.ProposalSubmitteds))
 	pidSeen := make(map[uint64]struct{})
 	for _, s := range sub0.ProposalSubmitteds {
-		pid, err := parseSubgraphUint(s.ProposalID)
+		pid, err := parseSubgraphUint(string(s.ProposalID))
 		if err != nil {
 			continue
 		}
@@ -61,7 +61,7 @@ func OrganizerProposalsSubgraphView(ctx context.Context, h *handlers.Handlers, o
 			continue
 		}
 		pidSeen[pid] = struct{}{}
-		ids = append(ids, strings.TrimSpace(s.ProposalID))
+		ids = append(ids, strings.TrimSpace(string(s.ProposalID)))
 	}
 	if len(ids) == 0 {
 		return fromPG, ""
@@ -78,7 +78,7 @@ func OrganizerProposalsSubgraphView(ctx context.Context, h *handlers.Handlers, o
 
 	launchByCID := make(map[uint64]sgEvLaunch)
 	for _, l := range pipe.CrowdfundingLauncheds {
-		cid, err := parseSubgraphUint(l.CampaignID)
+		cid, err := parseSubgraphUint(string(l.CampaignID))
 		if err != nil {
 			continue
 		}
@@ -96,7 +96,7 @@ func OrganizerProposalsSubgraphView(ctx context.Context, h *handlers.Handlers, o
 			}
 			if json.Unmarshal(rawF, &fin) == nil {
 				for _, f := range fin.CampaignFinalizeds {
-					cid, err := parseSubgraphUint(f.CampaignID)
+					cid, err := parseSubgraphUint(string(f.CampaignID))
 					if err != nil {
 						continue
 					}
@@ -113,7 +113,7 @@ func OrganizerProposalsSubgraphView(ctx context.Context, h *handlers.Handlers, o
 
 	submitByPID := make(map[uint64]sgPropSubmitted)
 	for _, row := range sub0.ProposalSubmitteds {
-		pid, err := parseSubgraphUint(row.ProposalID)
+		pid, err := parseSubgraphUint(string(row.ProposalID))
 		if err != nil {
 			continue
 		}
@@ -131,14 +131,14 @@ func OrganizerProposalsSubgraphView(ctx context.Context, h *handlers.Handlers, o
 		base, ok := pgByID[pid]
 		if !ok {
 			s := submitByPID[pid]
-			ts := parseSubgraphTime(s.BlockTimestamp)
-			txh := s.TxHash
+			ts := parseSubgraphTime(string(s.BlockTimestamp))
+			txh := string(s.TxHash)
 			base = models.CPProposal{
 				ProposalID:       pid,
 				OrganizerAddress: organizerLower,
 				GithubURL:        s.GithubURL,
-				TargetWei:        strings.TrimSpace(s.Target),
-				DurationSeconds:  mustParseInt64(s.Duration),
+				TargetWei:        strings.TrimSpace(string(s.Target)),
+				DurationSeconds:  mustParseInt64(string(s.Duration)),
 				SubmittedTxHash:  &txh,
 				SubmittedAt:      ts,
 				CreatedAt:        time.Now().UTC(),
@@ -170,35 +170,37 @@ type propSimState struct {
 	round      string // 空表示无轮次审核态
 	roundCode  int    // 与 round 同时有效；0 表示未置位（与 PG 一致时用 1/2/3）
 	hasRound   bool
+	// 最近一次 CrowdfundingLaunched 的 campaign_id（用于区分「轮次态已清空」与「尚未发起过众筹」）
+	lastLaunchedCID *uint64
 }
 
 type sgEvPropReview struct {
-	ProposalID  string `json:"proposalId"`
-	Approved    bool   `json:"approved"`
-	BlockNumber string `json:"blockNumber"`
+	ProposalID  flexGraphScalar `json:"proposalId"`
+	Approved    bool            `json:"approved"`
+	BlockNumber flexGraphScalar `json:"blockNumber"`
 }
 
 type sgEvFRSubmit struct {
-	ProposalID  string `json:"proposalId"`
-	BlockNumber string `json:"blockNumber"`
+	ProposalID  flexGraphScalar `json:"proposalId"`
+	BlockNumber flexGraphScalar `json:"blockNumber"`
 }
 
 type sgEvFRReview struct {
-	ProposalID  string `json:"proposalId"`
-	Approved    bool   `json:"approved"`
-	BlockNumber string `json:"blockNumber"`
+	ProposalID  flexGraphScalar `json:"proposalId"`
+	Approved    bool            `json:"approved"`
+	BlockNumber flexGraphScalar `json:"blockNumber"`
 }
 
 type sgEvLaunch struct {
-	ProposalID  string `json:"proposalId"`
-	CampaignID  string `json:"campaignId"`
-	BlockNumber string `json:"blockNumber"`
+	ProposalID  flexGraphScalar `json:"proposalId"`
+	CampaignID  flexGraphScalar `json:"campaignId"`
+	BlockNumber flexGraphScalar `json:"blockNumber"`
 }
 
 type sgEvCampFinalize struct {
-	CampaignID  string `json:"campaignId"`
-	Successful  bool   `json:"successful"`
-	BlockNumber string `json:"blockNumber"`
+	CampaignID  flexGraphScalar `json:"campaignId"`
+	Successful  bool            `json:"successful"`
+	BlockNumber flexGraphScalar `json:"blockNumber"`
 }
 
 type sgInitiatorPipeEvents struct {
@@ -259,39 +261,39 @@ func simulateProposalStateFromSubgraph(
 ) propSimState {
 	var evs []timelineEv
 	for _, r := range pipe.ProposalRevieweds {
-		rpid, err := parseSubgraphUint(r.ProposalID)
+		rpid, err := parseSubgraphUint(string(r.ProposalID))
 		if err != nil || rpid != pid {
 			continue
 		}
-		evs = append(evs, timelineEv{block: mustParseBN(r.BlockNumber), order: 1, kind: 1, appr: r.Approved})
+		evs = append(evs, timelineEv{block: mustParseBN(string(r.BlockNumber)), order: 1, kind: 1, appr: r.Approved})
 	}
 	for _, r := range pipe.FundingRoundSubmittedForReviews {
-		rpid, err := parseSubgraphUint(r.ProposalID)
+		rpid, err := parseSubgraphUint(string(r.ProposalID))
 		if err != nil || rpid != pid {
 			continue
 		}
-		evs = append(evs, timelineEv{block: mustParseBN(r.BlockNumber), order: 2, kind: 2})
+		evs = append(evs, timelineEv{block: mustParseBN(string(r.BlockNumber)), order: 2, kind: 2})
 	}
 	for _, r := range pipe.FundingRoundRevieweds {
-		rpid, err := parseSubgraphUint(r.ProposalID)
+		rpid, err := parseSubgraphUint(string(r.ProposalID))
 		if err != nil || rpid != pid {
 			continue
 		}
-		evs = append(evs, timelineEv{block: mustParseBN(r.BlockNumber), order: 3, kind: 3, appr: r.Approved})
+		evs = append(evs, timelineEv{block: mustParseBN(string(r.BlockNumber)), order: 3, kind: 3, appr: r.Approved})
 	}
 	for _, r := range pipe.CrowdfundingLauncheds {
-		rpid, err := parseSubgraphUint(r.ProposalID)
+		rpid, err := parseSubgraphUint(string(r.ProposalID))
 		if err != nil || rpid != pid {
 			continue
 		}
-		cid, err := parseSubgraphUint(r.CampaignID)
+		cid, err := parseSubgraphUint(string(r.CampaignID))
 		if err != nil {
 			continue
 		}
-		evs = append(evs, timelineEv{block: mustParseBN(r.BlockNumber), order: 4, kind: 4, cid: cid})
+		evs = append(evs, timelineEv{block: mustParseBN(string(r.BlockNumber)), order: 4, kind: 4, cid: cid})
 	}
 	for cid, l := range launchByCID {
-		rpid, err := parseSubgraphUint(l.ProposalID)
+		rpid, err := parseSubgraphUint(string(l.ProposalID))
 		if err != nil || rpid != pid {
 			continue
 		}
@@ -299,8 +301,8 @@ func simulateProposalStateFromSubgraph(
 		if !ok || !f.Successful {
 			continue
 		}
-		fb := mustParseBN(f.BlockNumber)
-		lb := mustParseBN(l.BlockNumber)
+		fb := mustParseBN(string(f.BlockNumber))
+		lb := mustParseBN(string(l.BlockNumber))
 		if fb < lb {
 			continue
 		}
@@ -325,6 +327,7 @@ func simulateProposalStateFromSubgraph(
 				s.hasRound = false
 				s.round = ""
 				s.roundCode = 0
+				s.lastLaunchedCID = nil
 			} else {
 				s.status = sgStRejected
 				s.statusCode = 3
@@ -358,6 +361,8 @@ func simulateProposalStateFromSubgraph(
 			s.hasRound = false
 			s.round = ""
 			s.roundCode = 0
+			cid := e.cid
+			s.lastLaunchedCID = &cid
 		case 5:
 			s.status = sgStSettled
 			s.statusCode = 7
@@ -372,6 +377,10 @@ func simulateProposalStateFromSubgraph(
 func applySimulatedState(p *models.CPProposal, st propSimState) {
 	p.Status = st.status
 	p.StatusCode = st.statusCode
+	if st.lastLaunchedCID != nil {
+		v := *st.lastLaunchedCID
+		p.LastCampaignID = &v
+	}
 	if !st.hasRound {
 		p.RoundReviewState = nil
 		p.RoundReviewStateCode = nil
@@ -415,15 +424,15 @@ func OrganizerFundraisingCampaignsSubgraphView(ctx context.Context, h *handlers.
 	}
 	var data struct {
 		CrowdfundingLauncheds []struct {
-			ProposalID   string `json:"proposalId"`
-			CampaignID   string `json:"campaignId"`
-			GithubURL    string `json:"githubUrl"`
-			Target       string `json:"target"`
-			Deadline     string `json:"deadline"`
-			RoundIndex   string `json:"roundIndex"`
-			BlockNumber  string `json:"blockNumber"`
-			BlockTS      string `json:"blockTimestamp"`
-			TransactionH string `json:"transactionHash"`
+			ProposalID   flexGraphScalar `json:"proposalId"`
+			CampaignID   flexGraphScalar `json:"campaignId"`
+			GithubURL    string          `json:"githubUrl"`
+			Target       flexGraphScalar `json:"target"`
+			Deadline     flexGraphScalar `json:"deadline"`
+			RoundIndex   flexGraphScalar `json:"roundIndex"`
+			BlockNumber  flexGraphScalar `json:"blockNumber"`
+			BlockTS      flexGraphScalar `json:"blockTimestamp"`
+			TransactionH flexGraphScalar `json:"transactionHash"`
 		} `json:"crowdfundingLauncheds"`
 	}
 	if json.Unmarshal(raw, &data) != nil || len(data.CrowdfundingLauncheds) == 0 {
@@ -433,7 +442,7 @@ func OrganizerFundraisingCampaignsSubgraphView(ctx context.Context, h *handlers.
 	cids := make([]string, 0, len(data.CrowdfundingLauncheds))
 	cidSeen := make(map[uint64]struct{})
 	for _, l := range data.CrowdfundingLauncheds {
-		cid, err := parseSubgraphUint(l.CampaignID)
+		cid, err := parseSubgraphUint(string(l.CampaignID))
 		if err != nil {
 			continue
 		}
@@ -441,19 +450,19 @@ func OrganizerFundraisingCampaignsSubgraphView(ctx context.Context, h *handlers.
 			continue
 		}
 		cidSeen[cid] = struct{}{}
-		cids = append(cids, strings.TrimSpace(l.CampaignID))
+		cids = append(cids, strings.TrimSpace(string(l.CampaignID)))
 	}
 	finalized := make(map[uint64]struct{})
 	if len(cids) > 0 {
 		if rawF, err := h.SubgraphCodePulse.Query(ctx, cpSubgraphCampaignFinalized, map[string]any{"cids": cids}); err == nil {
 			var fin struct {
 				CampaignFinalizeds []struct {
-					CampaignID string `json:"campaignId"`
+					CampaignID flexGraphScalar `json:"campaignId"`
 				} `json:"campaignFinalizeds"`
 			}
 			if json.Unmarshal(rawF, &fin) == nil {
 				for _, f := range fin.CampaignFinalizeds {
-					cid, err := parseSubgraphUint(f.CampaignID)
+					cid, err := parseSubgraphUint(string(f.CampaignID))
 					if err != nil {
 						continue
 					}
@@ -472,7 +481,7 @@ func OrganizerFundraisingCampaignsSubgraphView(ctx context.Context, h *handlers.
 	note := ""
 	seenCamp := make(map[uint64]struct{})
 	for _, l := range data.CrowdfundingLauncheds {
-		cid, err := parseSubgraphUint(l.CampaignID)
+		cid, err := parseSubgraphUint(string(l.CampaignID))
 		if err != nil {
 			continue
 		}
@@ -483,7 +492,7 @@ func OrganizerFundraisingCampaignsSubgraphView(ctx context.Context, h *handlers.
 		if _, fin := finalized[cid]; fin {
 			continue
 		}
-		pid, err := parseSubgraphUint(l.ProposalID)
+		pid, err := parseSubgraphUint(string(l.ProposalID))
 		if err != nil {
 			continue
 		}
@@ -495,17 +504,17 @@ func OrganizerFundraisingCampaignsSubgraphView(ctx context.Context, h *handlers.
 			out = append(out, cp)
 			continue
 		}
-		deadlineUnix := mustParseInt64(l.Deadline)
-		launchedAt := time.Unix(parseBlockTS(l.BlockTS), 0).UTC()
-		ri := int(mustParseInt64(l.RoundIndex))
-		txh := l.TransactionH
+		deadlineUnix := mustParseInt64(string(l.Deadline))
+		launchedAt := time.Unix(parseBlockTS(string(l.BlockTS)), 0).UTC()
+		ri := int(mustParseInt64(string(l.RoundIndex)))
+		txh := string(l.TransactionH)
 		out = append(out, models.CPCampaign{
 			CampaignID:             cid,
 			ProposalID:             pid,
 			RoundIndex:             ri,
 			OrganizerAddress:       organizerLower,
 			GithubURL:              l.GithubURL,
-			TargetWei:              strings.TrimSpace(l.Target),
+			TargetWei:              strings.TrimSpace(string(l.Target)),
 			DeadlineAt:             time.Unix(deadlineUnix, 0).UTC(),
 			AmountRaisedWei:        "0",
 			TotalWithdrawnWei:      "0",
@@ -515,12 +524,13 @@ func OrganizerFundraisingCampaignsSubgraphView(ctx context.Context, h *handlers.
 			DonorCount:             0,
 			DeveloperCount:         0,
 			LaunchedTxHash:         txh,
-			LaunchedBlockNumber:    mustParseBN(l.BlockNumber),
+			LaunchedBlockNumber:    mustParseBN(string(l.BlockNumber)),
 			LaunchedAt:             launchedAt,
 			CreatedAt:              time.Now().UTC(),
 			UpdatedAt:              time.Now().UTC(),
 		})
 	}
+	mergeCampaignListWithDBRaised(h, out)
 	return out, note
 }
 

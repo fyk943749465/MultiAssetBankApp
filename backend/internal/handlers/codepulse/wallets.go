@@ -2,6 +2,7 @@ package codepulse
 
 import (
 	"net/http"
+	"sync"
 
 	"go-chain/backend/internal/handlers"
 	"go-chain/backend/internal/models"
@@ -48,8 +49,33 @@ func WalletOverview(h *handlers.Handlers) gin.HandlerFunc {
 		var proposalsForMerge []models.CPProposal
 		h.DB.Where("LOWER(organizer_address) = ?", addr).
 			Order("created_at DESC").Limit(100).Find(&proposalsForMerge)
-		mergedProposals, _ := mergeSubgraphProposalsForOrganizer(ctx, h, addr, proposalsForMerge)
-		mergedLen := int64(len(mergedProposals))
+
+		// 子图 / 合并调用彼此独立，串行会叠加大延迟；并行后耗时接近「最慢的一条」。
+		var mergedLen int64
+		var sgDonations int64
+		var sgDevCamps int64
+		var subgraphOrgProposals bool
+		var wg sync.WaitGroup
+		wg.Add(4)
+		go func() {
+			defer wg.Done()
+			merged, _ := mergeSubgraphProposalsForOrganizer(ctx, h, addr, proposalsForMerge)
+			mergedLen = int64(len(merged))
+		}()
+		go func() {
+			defer wg.Done()
+			sgDonations = sgDonationCount(ctx, h, addr)
+		}()
+		go func() {
+			defer wg.Done()
+			sgDevCamps = sgDeveloperCampaignCount(ctx, h, addr)
+		}()
+		go func() {
+			defer wg.Done()
+			subgraphOrgProposals = organizerHasProposalInSubgraph(ctx, h, addr)
+		}()
+		wg.Wait()
+
 		proposalCount := proposalCountPG
 		if mergedLen > proposalCount {
 			proposalCount = mergedLen
@@ -62,7 +88,6 @@ func WalletOverview(h *handlers.Handlers) gin.HandlerFunc {
 		var donationCountPG int64
 		h.DB.Model(&models.CPContribution{}).
 			Where("LOWER(contributor_address) = ?", addr).Count(&donationCountPG)
-		sgDonations := sgDonationCount(ctx, h, addr)
 		donationCount := donationCountPG
 		if sgDonations > donationCount {
 			donationCount = sgDonations
@@ -71,13 +96,10 @@ func WalletOverview(h *handlers.Handlers) gin.HandlerFunc {
 		var devCampCountPG int64
 		h.DB.Model(&models.CPCampaignDeveloper{}).
 			Where("LOWER(developer_address) = ? AND is_active = true", addr).Count(&devCampCountPG)
-		sgDevCamps := sgDeveloperCampaignCount(ctx, h, addr)
 		developerCampaignCount := devCampCountPG
 		if sgDevCamps > developerCampaignCount {
 			developerCampaignCount = sgDevCamps
 		}
-
-		subgraphOrgProposals := organizerHasProposalInSubgraph(ctx, h, addr)
 
 		dashboards := []string{}
 		if roleSet["admin"] {

@@ -82,6 +82,7 @@ export function fetchCodePulseProposals(params: ProposalListParams = {}) {
       status: params.status,
       organizer: params.organizer,
       review_state: params.review_state,
+      waiting_launch_queue: params.waiting_launch_queue,
       has_pending_round: params.has_pending_round,
       page: params.page,
       page_size: params.page_size,
@@ -121,16 +122,26 @@ export function fetchCodePulseCampaigns(params: CampaignListParams = {}) {
   );
 }
 
+function assertCampaignId(campaignId: string | number): string {
+  const s = String(campaignId).trim();
+  if (!s || s === "undefined" || !/^\d+$/.test(s)) {
+    throw new Error("无效的活动编号（campaign_id 须为正整数）");
+  }
+  return s;
+}
+
 export function fetchCodePulseCampaignDetail(campaignId: string | number) {
-  return getJSON<CampaignDetailResponse>(`/api/code-pulse/campaigns/${campaignId}`);
+  const id = assertCampaignId(campaignId);
+  return getJSON<CampaignDetailResponse>(`/api/code-pulse/campaigns/${id}`);
 }
 
 export function fetchCodePulseCampaignTimeline(
   campaignId: string | number,
   params: TimelineParams = {},
 ) {
+  const id = assertCampaignId(campaignId);
   return getJSON<TimelineResponse>(
-    `/api/code-pulse/campaigns/${campaignId}/timeline${buildQuery({
+    `/api/code-pulse/campaigns/${id}/timeline${buildQuery({
       page: params.page,
       page_size: params.page_size,
     })}`,
@@ -141,8 +152,9 @@ export function fetchCodePulseCampaignContributions(
   campaignId: string | number,
   params: ContributionListParams = {},
 ) {
+  const id = assertCampaignId(campaignId);
   return getJSON<CampaignContributionResponse>(
-    `/api/code-pulse/campaigns/${campaignId}/contributions${buildQuery({
+    `/api/code-pulse/campaigns/${id}/contributions${buildQuery({
       contributor: params.contributor,
       sort: params.sort,
       page: params.page,

@@ -31,6 +31,9 @@ type Config struct {
 	IndexerMaxBlockSpan       uint64
 	// CodePulseServerTx 为 true 时开放 POST /api/code-pulse/tx/submit（需 ETH_PRIVATE_KEY）。默认 false：仅钱包签名。
 	CodePulseServerTx bool
+	// CodePulseInitiatorReconcileSeconds 将 cp_wallet_roles 中全局 proposal_initiator 与链上白名单定时对齐（秒）；0 表示关闭。
+	// 子图可用时按子图事件折叠结果写库；子图失败时用合约 isProposalInitiator 刷新库中已出现过的地址。
+	CodePulseInitiatorReconcileSeconds int
 }
 
 func Load() (*Config, error) {
@@ -70,6 +73,13 @@ func Load() (*Config, error) {
 	cpServerTx := strings.EqualFold(strings.TrimSpace(os.Getenv("CODE_PULSE_SERVER_TX")), "true") ||
 		strings.TrimSpace(os.Getenv("CODE_PULSE_SERVER_TX")) == "1"
 
+	cpInitRec := 0
+	if v := strings.TrimSpace(os.Getenv("CODE_PULSE_INITIATOR_RECONCILE_SECONDS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cpInitRec = n
+		}
+	}
+
 	return &Config{
 		ServerAddr:                   getEnv("SERVER_ADDR", ":8080"),
 		DatabaseURL:                  os.Getenv("DATABASE_URL"),
@@ -89,7 +99,8 @@ func Load() (*Config, error) {
 		IndexerPollSeconds:           idxPoll,
 		IndexerFilterChunkPauseMs:    idxPauseMs,
 		IndexerMaxBlockSpan:          idxSpan,
-		CodePulseServerTx:            cpServerTx,
+		CodePulseServerTx:                   cpServerTx,
+		CodePulseInitiatorReconcileSeconds: cpInitRec,
 	}, nil
 }
 

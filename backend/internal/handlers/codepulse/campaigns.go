@@ -182,27 +182,37 @@ func CampaignDetail(h *handlers.Handlers) gin.HandlerFunc {
 		}
 
 		ctx := c.Request.Context()
+		var ca *models.CPCampaign
 		if sgCamps, ok := sgQueryAllCampaigns(ctx, h); ok {
-			for _, ca := range sgCamps {
-				if ca.CampaignID != cid {
-					continue
+			for i := range sgCamps {
+				if sgCamps[i].CampaignID == cid {
+					ca = &sgCamps[i]
+					break
 				}
-				resp := gin.H{
-					"campaign":    ca,
-					"donor_count": ca.DonorCount,
-					"data_source": "subgraph",
-				}
-				if h.DB != nil {
-					var milestones []models.CPCampaignMilestone
-					h.DB.Where(whereCampaignID, cid).Order("milestone_index").Find(&milestones)
-					resp["milestones"] = milestones
-					var developers []models.CPCampaignDeveloper
-					h.DB.Where("campaign_id = ? AND is_active = true", cid).Find(&developers)
-					resp["developers"] = developers
-				}
-				c.JSON(http.StatusOK, resp)
-				return
 			}
+		}
+		// 全量列表只含「最近 1000 次 launch」；活动较旧时不在列表里，但子图仍有 launch/donated，需按 campaignId 定向查，避免在 PG 扫链前误退回 database 全 0。
+		if ca == nil && sgAvailable(h) {
+			if one, ok := sgQuerySingleCampaignFromSubgraph(ctx, h, cid); ok {
+				ca = one
+			}
+		}
+		if ca != nil {
+			resp := gin.H{
+				"campaign":    *ca,
+				"donor_count": ca.DonorCount,
+				"data_source": "subgraph",
+			}
+			if h.DB != nil {
+				var milestones []models.CPCampaignMilestone
+				h.DB.Where(whereCampaignID, cid).Order("milestone_index").Find(&milestones)
+				resp["milestones"] = milestones
+				var developers []models.CPCampaignDeveloper
+				h.DB.Where("campaign_id = ? AND is_active = true", cid).Find(&developers)
+				resp["developers"] = developers
+			}
+			c.JSON(http.StatusOK, resp)
+			return
 		}
 
 		if !requireDB(h, c) {
@@ -245,10 +255,7 @@ func CampaignDetail(h *handlers.Handlers) gin.HandlerFunc {
 // @Router       /api/code-pulse/campaigns/{campaignId}/timeline [get]
 func CampaignTimeline(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !requireDB(h, c) {
-			return
-		}
-
+		ctx := c.Request.Context()
 		cid, err := strconv.ParseUint(c.Param("campaignId"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCampaign})
@@ -269,22 +276,34 @@ func CampaignTimeline(h *handlers.Handlers) gin.HandlerFunc {
 			"StaleFundsSwept",
 		}
 
-		q := h.DB.Model(&models.CPEventLog{}).
-			Where("campaign_id = ? AND event_name IN ?", cid, campaignEvents)
+		sgRows, sgOK := sgFetchCampaignTimelineFromSubgraph(ctx, h, cid)
+		var merged []models.CPEventLog
+		if sgOK {
+			merged = dedupEventLogsByTxLog(sgRows)
+		} else if h.DB != nil {
+			pgRows, err := pgFetchCampaignTimelineEvents(h.DB, cid, campaignEvents)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			merged = dedupEventLogsByTxLog(pgRows)
+		}
+		sortTimelineEventsDesc(merged)
 
-		var total int64
-		q.Count(&total)
-
-		var events []models.CPEventLog
-		if err := q.Order("block_number DESC, log_index DESC").
-			Offset(offset).Limit(pageSize).Find(&events).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+		total := int64(len(merged))
+		end := offset + pageSize
+		if end > len(merged) {
+			end = len(merged)
+		}
+		var pageRows []models.CPEventLog
+		if offset < len(merged) {
+			pageRows = merged[offset:end]
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"events":     events,
-			"pagination": Pagination{Page: page, PageSize: pageSize, Total: total},
+			"events":      pageRows,
+			"pagination":  Pagination{Page: page, PageSize: pageSize, Total: total},
+			"data_source": contributionsListDataSource(sgOK, len(merged)),
 		})
 	}
 }
@@ -302,10 +321,7 @@ func CampaignTimeline(h *handlers.Handlers) gin.HandlerFunc {
 // @Router       /api/code-pulse/campaigns/{campaignId}/contributions [get]
 func CampaignContributions(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !requireDB(h, c) {
-			return
-		}
-
+		ctx := c.Request.Context()
 		cid, err := strconv.ParseUint(c.Param("campaignId"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCampaign})
@@ -313,31 +329,47 @@ func CampaignContributions(h *handlers.Handlers) gin.HandlerFunc {
 		}
 
 		page, pageSize, offset := parsePagination(c)
-		q := h.DB.Model(&models.CPContribution{}).Where(whereCampaignID, cid)
+
+		sgRows, sgOK := sgFetchDonationsForCampaign(ctx, h, cid)
+		var merged []models.CampaignDonationEntry
+		if sgOK {
+			merged = dedupDonationsByTxLog(sgRows)
+		} else if h.DB != nil {
+			pgRows, err := pgFetchDonationsFromEventLog(h.DB, cid)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			merged = dedupDonationsByTxLog(pgRows)
+		}
 
 		if v := c.Query("contributor"); v != "" {
-			q = q.Where("LOWER(contributor_address) = ?", normalizeAddress(v))
+			addr := normalizeAddress(v)
+			var filtered []models.CampaignDonationEntry
+			for _, e := range merged {
+				if normalizeAddress(e.ContributorAddress) == addr {
+					filtered = append(filtered, e)
+				}
+			}
+			merged = filtered
 		}
 
-		var total int64
-		q.Count(&total)
+		sortCampaignDonations(merged, c.DefaultQuery("sort", "amount_desc"))
 
-		switch c.DefaultQuery("sort", "amount_desc") {
-		case "latest":
-			q = q.Order("last_donated_at DESC NULLS LAST")
-		default:
-			q = q.Order("total_contributed_wei DESC")
+		total := int64(len(merged))
+		end := offset + pageSize
+		if end > len(merged) {
+			end = len(merged)
 		}
-
-		var rows []models.CPContribution
-		if err := q.Offset(offset).Limit(pageSize).Find(&rows).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+		var pageRows []models.CampaignDonationEntry
+		if offset < len(merged) {
+			pageRows = merged[offset:end]
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"contributions": rows,
+			"contributions": pageRows,
 			"pagination":    Pagination{Page: page, PageSize: pageSize, Total: total},
+			"data_source":   contributionsListDataSource(sgOK, len(merged)),
 		})
 	}
 }

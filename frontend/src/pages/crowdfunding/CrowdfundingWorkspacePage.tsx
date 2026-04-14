@@ -100,6 +100,24 @@ export function CrowdfundingWorkspacePage() {
 
   const roles = Array.from(new Set(data.overview.roles.map((role) => role.role)));
 
+  // 后端 Go nil slice 会序列化为 JSON null；兜底成 [] 避免 .length / .map 报错
+  const contributorSafe = data.contributor
+    ? {
+        ...data.contributor,
+        refundable: data.contributor.refundable ?? [],
+        fundraising: data.contributor.fundraising ?? [],
+        successful: data.contributor.successful ?? [],
+      }
+    : null;
+  const developerSafe = data.developer
+    ? {
+        ...data.developer,
+        campaigns: data.developer.campaigns ?? [],
+        pending_milestones: data.developer.pending_milestones ?? [],
+        claims: data.developer.claims ?? [],
+      }
+    : null;
+
   return (
     <div className="space-y-6">
       <Card>
@@ -213,19 +231,19 @@ export function CrowdfundingWorkspacePage() {
         </section>
       ) : null}
 
-      {data.contributor ? (
+      {contributorSafe ? (
         <section className="space-y-4">
           <SectionIntro eyebrow="Contributor" title="捐助人视角" description="展示你的累计捐助、可退款项目和参与过的募资活动。" />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="参与活动数" value={data.contributor.contributions_total} />
-            <StatCard label="累计捐助" value={formatWei(data.contributor.total_donated_wei)} />
-            <StatCard label="可退款项目" value={data.contributor.refundable.length} />
-            <StatCard label="成功 / 进行中" value={data.contributor.successful.length + data.contributor.fundraising.length} />
+            <StatCard label="参与活动数" value={contributorSafe.contributions_total} />
+            <StatCard label="累计捐助" value={formatWei(contributorSafe.total_donated_wei)} />
+            <StatCard label="可退款项目" value={contributorSafe.refundable.length} />
+            <StatCard label="成功 / 进行中" value={contributorSafe.successful.length + contributorSafe.fundraising.length} />
           </div>
           <DashboardGroup title="可退款项目">
-            {data.contributor.refundable.length > 0 ? (
+            {contributorSafe.refundable.length > 0 ? (
               <div className="grid gap-4 xl:grid-cols-2">
-                {data.contributor.refundable.map((item) => (
+                {contributorSafe.refundable.map((item) => (
                   <RoutePressable key={`${item.campaign_id}-${item.contributor_address}`} to={`/crowdfunding/campaigns/${item.campaign_id}`} className="block">
                     <Card className="transition hover:ring-primary/30">
                       <CardContent>
@@ -245,9 +263,9 @@ export function CrowdfundingWorkspacePage() {
             )}
           </DashboardGroup>
           <DashboardGroup title="募资中项目">
-            {data.contributor.fundraising.length > 0 ? (
+            {contributorSafe.fundraising.length > 0 ? (
               <div className="grid gap-4 xl:grid-cols-2">
-                {data.contributor.fundraising.map((item) => (
+                {contributorSafe.fundraising.map((item) => (
                   <RoutePressable key={`${item.campaign_id}-${item.contributor_address}`} to={`/crowdfunding/campaigns/${item.campaign_id}`} className="block">
                     <Card className="transition hover:ring-primary/30">
                       <CardContent>
@@ -264,9 +282,9 @@ export function CrowdfundingWorkspacePage() {
             )}
           </DashboardGroup>
           <DashboardGroup title="成功 / 已完成项目">
-            {data.contributor.successful.length > 0 ? (
+            {contributorSafe.successful.length > 0 ? (
               <div className="grid gap-4 xl:grid-cols-2">
-                {data.contributor.successful.map((item) => (
+                {contributorSafe.successful.map((item) => (
                   <RoutePressable key={`${item.campaign_id}-${item.contributor_address}`} to={`/crowdfunding/campaigns/${item.campaign_id}`} className="block">
                     <Card className="transition hover:ring-primary/30">
                       <CardContent>
@@ -285,28 +303,28 @@ export function CrowdfundingWorkspacePage() {
         </section>
       ) : null}
 
-      {data.developer ? (
+      {developerSafe ? (
         <section className="space-y-4">
           <SectionIntro eyebrow="Developer" title="开发者视角" description="展示你参与的活动、待审批阶段和历史领取记录。" />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="参与活动数" value={data.developer.campaigns.length} />
-            <StatCard label="待审批里程碑" value={data.developer.pending_milestones.length} />
-            <StatCard label="领取记录数" value={data.developer.claims.length} />
-            <StatCard label="累计领取" value={formatWei(data.developer.total_claimed_wei)} />
+            <StatCard label="参与活动数" value={developerSafe.campaigns.length} />
+            <StatCard label="待审批里程碑" value={developerSafe.pending_milestones.length} />
+            <StatCard label="领取记录数" value={developerSafe.claims.length} />
+            <StatCard label="累计领取" value={formatWei(developerSafe.total_claimed_wei)} />
           </div>
           <DashboardGroup title="参与中的活动">
-            {data.developer.campaigns.length > 0 ? (
+            {developerSafe.campaigns.length > 0 ? (
               <div className="grid gap-4 xl:grid-cols-2">
-                {data.developer.campaigns.map((c) => <CampaignCard key={c.campaign_id} campaign={c} compact />)}
+                {developerSafe.campaigns.map((c) => <CampaignCard key={c.campaign_id} campaign={c} compact />)}
               </div>
             ) : (
               <EmptyState title="没有开发者活动" />
             )}
           </DashboardGroup>
           <DashboardGroup title="待审批里程碑">
-            {data.developer.pending_milestones.length > 0 ? (
+            {developerSafe.pending_milestones.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {data.developer.pending_milestones.map((m) => (
+                {developerSafe.pending_milestones.map((m) => (
                   <Card key={`${m.campaign_id}-${m.milestone_index}`}>
                     <CardContent>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Campaign #{m.campaign_id}</p>
@@ -321,7 +339,7 @@ export function CrowdfundingWorkspacePage() {
             )}
           </DashboardGroup>
           <DashboardGroup title="历史领取记录">
-            {data.developer.claims.length > 0 ? (
+            {developerSafe.claims.length > 0 ? (
               <Card>
                 <CardContent>
                   <Table>
@@ -335,7 +353,7 @@ export function CrowdfundingWorkspacePage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.developer.claims.map((claim) => (
+                      {developerSafe.claims.map((claim) => (
                         <TableRow key={`${claim.campaign_id}-${claim.milestone_index}-${claim.claimed_tx_hash}`}>
                           <TableCell>#{claim.campaign_id}</TableCell>
                           <TableCell>{claim.milestone_index + 1}</TableCell>

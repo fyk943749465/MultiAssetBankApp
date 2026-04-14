@@ -20,6 +20,8 @@ export type CPConfig = {
   contract_address: string;
   contract_configured: boolean;
   subgraph_configured: boolean;
+  /** 合约 owner（来自链上 / cp_system_states），用于前端判断管理员动作是否展示 */
+  owner_address?: string;
   /** 仅当 CODE_PULSE_SERVER_TX=1 且配置了 ETH_PRIVATE_KEY 时为代签地址 */
   server_tx_relayer_address?: string;
   /** 是否开放 POST /api/code-pulse/tx/submit（默认 false，由钱包签名发送） */
@@ -94,6 +96,18 @@ export type CPContribution = {
   updated_at: string;
 };
 
+/** 活动详情「贡献」接口：单笔 Donated，非 cp_contributions 聚合行。 */
+export type CPCampaignDonationRow = {
+  campaign_id: number;
+  contributor_address: string;
+  amount_wei: string;
+  donated_at: string;
+  tx_hash: string;
+  log_index: number;
+  refund_claimed_wei: string;
+  data_source?: string;
+};
+
 export type CPProposalMilestone = {
   id: number;
   proposal_id: number;
@@ -151,15 +165,16 @@ export type CPEventLog = {
 };
 
 export type CPWalletRole = {
-  id: number;
+  id?: number;
   wallet_address: string;
   role: string;
   scope_type: string;
   scope_id?: string | null;
   active: boolean;
   derived_from: string;
-  created_at: string;
-  updated_at: string;
+  source?: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type CPMilestoneClaim = {
@@ -175,6 +190,8 @@ export type ProposalListParams = {
   status?: string;
   organizer?: string;
   review_state?: string;
+  /** 仅「待进入募资」队列（与首页 Launch Queue 一致） */
+  waiting_launch_queue?: boolean;
   has_pending_round?: boolean;
   page?: number;
   page_size?: number;
@@ -230,11 +247,15 @@ export type CampaignDetailResponse = {
 export type TimelineResponse = {
   events: CPEventLog[];
   pagination: Pagination;
+  /** 活动 timeline：子图成功为 subgraph，子图失败且走 PG 为 database，无数据为 empty */
+  data_source?: string;
 };
 
 export type CampaignContributionResponse = {
-  contributions: CPContribution[];
+  contributions: CPCampaignDonationRow[];
   pagination: Pagination;
+  /** 子图成功为 subgraph；子图失败且走 cp_event_log 为 database；无数据为 empty */
+  data_source?: string;
 };
 
 export type WalletOverview = {
@@ -328,6 +349,9 @@ export type ActionCheckResponse = {
   reason_message?: string;
   revert_error_name?: string;
   revert_error_args?: unknown;
+  /** 不阻止交易，仅补充说明（如撤销 initiator 对已有 organizer 提案的影响） */
+  advisory_code?: string;
+  advisory_message?: string;
 };
 
 export type TxBuildRequest = {
@@ -358,6 +382,8 @@ export type TxBuildResponse = {
   revert_error_name?: string;
   revert_error_args?: unknown;
   revert_message?: string;
+  advisory_code?: string;
+  advisory_message?: string;
 };
 
 export type TxSubmitResponse = {
@@ -431,6 +457,8 @@ export type AdminDashboard = {
 export type InitiatorListResponse = {
   initiators: string[];
   total: number;
+  /** 列表来源：子图折叠链上 ProposalInitiatorUpdated；失败时为 PostgreSQL 角色表 */
+  data_source?: "subgraph" | "database";
 };
 
 export type PlatformFundsResponse = {
@@ -440,6 +468,16 @@ export type PlatformFundsResponse = {
   pagination: Pagination;
 };
 
+/** 与后端索引器一致的 RPC 链头（可与游标对照） */
+export type ChainRPCHeads = {
+  latest_block: number;
+  safe_block?: number;
+  finalized_block?: number;
+  /** 索引扫块上界（finalized / safe / latest-12 之一） */
+  confirmed_tip_block: number;
+  confirmed_tip_source: "finalized" | "safe" | "latest_minus_12";
+};
+
 export type SyncStatusResponse = {
   cursors: CPSyncCursor[];
   /** 子图可用且计数成功时为子图实体总数；否则为 cp_event_log 行数 */
@@ -447,6 +485,7 @@ export type SyncStatusResponse = {
   event_count_source?: "subgraph" | "database";
   /** 始终为 PostgreSQL cp_event_log 行数（可与 event_count 对照） */
   event_count_database?: number;
+  chain_heads?: ChainRPCHeads;
 };
 
 export type AdminEventsResponse = {

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"go-chain/backend/internal/handlers"
@@ -18,7 +19,8 @@ import (
 // @Produce      json
 // @Param        status        query string false "Filter by status"
 // @Param        organizer     query string false "Filter by organizer address"
-// @Param        review_state  query string false "Filter by round_review_state"
+// @Param        review_state         query string false "Filter by round_review_state"
+// @Param        waiting_launch_queue query string false "If true, only proposals waiting to enter fundraising (approved + round_review_approved, or approved with no round state and never launched)"
 // @Param        page          query int    false "Page number (default 1)"
 // @Param        page_size     query int    false "Page size (default 20, max 100)"
 // @Param        sort          query string false "Sort: submitted_at_desc (default), submitted_at_asc"
@@ -76,6 +78,15 @@ func Proposals(h *handlers.Handlers) gin.HandlerFunc {
 		if v := c.Query("review_state"); v != "" {
 			q = q.Where("round_review_state = ?", v)
 		}
+		if c.Query("waiting_launch_queue") == "true" {
+			q = q.Where(`status = 'approved' AND (
+				round_review_state = 'round_review_approved'
+				OR (
+					(round_review_state IS NULL OR round_review_state = '')
+					AND last_campaign_id IS NULL
+				)
+			)`)
+		}
 		if c.Query("has_pending_round") == "true" {
 			q = q.Where("pending_round_target_wei IS NOT NULL")
 		}
@@ -104,12 +115,41 @@ func Proposals(h *handlers.Handlers) gin.HandlerFunc {
 	}
 }
 
+// proposalAwaitingFirstRoundSubmit 发起人工作台「已通过待发起」：提案已通过且尚未进入轮次审核流、且从未 launch 过（launch 后轮次态会清空，用 last_campaign_id 区分）。
+func proposalAwaitingFirstRoundSubmit(p models.CPProposal) bool {
+	if p.Status != "approved" {
+		return false
+	}
+	if p.RoundReviewState != nil && strings.TrimSpace(*p.RoundReviewState) != "" {
+		return false
+	}
+	if p.LastCampaignID != nil && *p.LastCampaignID != 0 {
+		return false
+	}
+	return true
+}
+
+// proposalInLaunchQueue 首页 Launch Queue：待提交首轮众筹审核，或本轮已通过审核等待 launch（不含已 launch 后轮次态清空的情况）。
+func proposalInLaunchQueue(p models.CPProposal) bool {
+	if proposalAwaitingFirstRoundSubmit(p) {
+		return true
+	}
+	if p.Status != "approved" {
+		return false
+	}
+	if p.RoundReviewState != nil && strings.TrimSpace(*p.RoundReviewState) == "round_review_approved" {
+		return true
+	}
+	return false
+}
+
 func sgFilterProposals(all []models.CPProposal, c *gin.Context) []models.CPProposal {
 	status := c.Query("status")
 	organizer := c.Query("organizer")
 	reviewState := c.Query("review_state")
+	waitLaunch := c.Query("waiting_launch_queue") == "true"
 
-	if status == "" && organizer == "" && reviewState == "" {
+	if status == "" && organizer == "" && reviewState == "" && !waitLaunch {
 		return all
 	}
 
@@ -130,6 +170,9 @@ func sgFilterProposals(all []models.CPProposal, c *gin.Context) []models.CPPropo
 			if p.RoundReviewState == nil || *p.RoundReviewState != reviewState {
 				continue
 			}
+		}
+		if waitLaunch && !proposalInLaunchQueue(p) {
+			continue
 		}
 		out = append(out, p)
 	}

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import {
   computeProgressPercent,
+  explorerTxUrl,
   formatDateTime,
   formatDuration,
   formatMilestonePercent,
@@ -32,8 +33,8 @@ import {
 } from "./format";
 import type {
   CPCampaign,
+  CPCampaignDonationRow,
   CPCampaignMilestone,
-  CPContribution,
   CPEventLog,
   CPProposal,
   CPProposalMilestone,
@@ -481,14 +482,17 @@ export function TimelineList({
 /* ── Contribution Table ───────────────────────────────── */
 export function ContributionTable({
   contributions,
+  chainId,
 }: {
-  readonly contributions: ReadonlyArray<CPContribution>;
+  readonly contributions: ReadonlyArray<CPCampaignDonationRow>;
+  /** 用于区块浏览器链接；不传则仅展示哈希缩写。 */
+  chainId?: number;
 }) {
   if (contributions.length === 0) {
     return (
       <EmptyState
-        title="暂无贡献记录"
-        description="该活动暂时还没有已聚合的捐助数据。"
+        title="暂无捐助记录"
+        description="该活动还没有可展示的单笔 Donated 记录（子图或数据库同步后会出现）。"
       />
     );
   }
@@ -500,27 +504,38 @@ export function ContributionTable({
           <TableHeader>
             <TableRow>
               <TableHead>贡献者</TableHead>
-              <TableHead>累计捐助</TableHead>
-              <TableHead>已退款</TableHead>
-              <TableHead>最后捐助</TableHead>
+              <TableHead>金额（单笔）</TableHead>
+              <TableHead>交易</TableHead>
+              <TableHead>时间</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {contributions.map((item) => (
               <TableRow
-                key={`${item.campaign_id}-${item.contributor_address}`}
+                key={`${item.campaign_id}-${item.tx_hash}-${item.log_index}`}
               >
                 <TableCell className="font-mono">
                   {shortHash(item.contributor_address)}
                 </TableCell>
                 <TableCell>
-                  {formatWei(item.total_contributed_wei)}
+                  {formatWei(item.amount_wei)}
+                </TableCell>
+                <TableCell className="font-mono text-xs">
+                  {typeof chainId === "number" ? (
+                    <a
+                      className="text-primary underline-offset-4 hover:underline"
+                      href={explorerTxUrl(chainId, item.tx_hash)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {shortHash(item.tx_hash, 8, 6)}
+                    </a>
+                  ) : (
+                    shortHash(item.tx_hash, 8, 6)
+                  )}
                 </TableCell>
                 <TableCell>
-                  {formatWei(item.refund_claimed_wei)}
-                </TableCell>
-                <TableCell>
-                  {formatDateTime(item.last_donated_at)}
+                  {formatDateTime(item.donated_at)}
                 </TableCell>
               </TableRow>
             ))}

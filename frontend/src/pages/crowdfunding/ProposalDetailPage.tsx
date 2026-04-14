@@ -3,7 +3,14 @@ import { useParams } from "react-router-dom";
 import { NavButton } from "@/components/nav-spa";
 import { useAccount } from "wagmi";
 import { ActionFormCard } from "../../features/codepulse/action-ui";
-import { fetchCodePulseProposalDetail, fetchCodePulseProposalTimeline } from "../../features/codepulse/api";
+import { fetchCodePulseConfig, fetchCodePulseProposalDetail, fetchCodePulseProposalTimeline } from "../../features/codepulse/api";
+import {
+  computeProposalFlow,
+  isContractOwnerWallet,
+  isProposalOrganizer,
+  type AdminActionKey,
+  type OrganizerActionKey,
+} from "../../features/codepulse/proposal-action-flow";
 import {
   Callout,
   CampaignCard,
@@ -17,7 +24,7 @@ import {
   TimelineList,
 } from "../../features/codepulse/components";
 import { formatDateTime, formatDuration, formatWei, shortHash, titleCaseStatus } from "../../features/codepulse/format";
-import type { CPProposalMilestone, ProposalDetailResponse, TimelineResponse } from "../../features/codepulse/types";
+import type { CPConfig, CPProposalMilestone, ProposalDetailResponse, TimelineResponse } from "../../features/codepulse/types";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +39,21 @@ export function ProposalDetailPage() {
   const [loadingTimeline, setLoadingTimeline] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [cpConfig, setCpConfig] = useState<CPConfig | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCodePulseConfig()
+      .then((c) => {
+        if (!cancelled) setCpConfig(c);
+      })
+      .catch(() => {
+        if (!cancelled) setCpConfig(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,12 +102,122 @@ export function ProposalDetailPage() {
     return Array.from(groups.entries()).sort(([a], [b]) => a - b);
   }, [detail?.milestones]);
 
+  const flow = useMemo(
+    () => (detail ? computeProposalFlow(detail.proposal, detail.campaigns) : null),
+    [detail],
+  );
+
   if (loadingDetail && !detail) return <LoadingState message={`正在加载 Proposal #${proposalId}…`} />;
   if (error && !detail) return <ErrorState message={error} />;
   if (!detail) return <EmptyState title="提案不存在" description="请检查提案编号，或返回探索页重新选择。" />;
 
   const { proposal } = detail;
   const refresh = () => setRefreshKey((v) => v + 1);
+
+  const showOrganizer = Boolean(isConnected && address && isProposalOrganizer(address, proposal));
+  const showAdmin = Boolean(isConnected && address && isContractOwnerWallet(address, cpConfig?.owner_address));
+  const organizerKeys: OrganizerActionKey[] = showOrganizer && flow ? flow.organizerActions : [];
+  const adminKeys: AdminActionKey[] = showAdmin && flow ? flow.adminActions : [];
+  const adminStepWaiting =
+    Boolean(flow && flow.adminActions.length > 0 && adminKeys.length === 0 && isConnected && address);
+
+  const renderOrganizerAction = (key: OrganizerActionKey) => {
+    const pid = proposal.proposal_id;
+    const common = { wallet: address!, proposalId: pid, onSuccess: refresh };
+    switch (key) {
+      case "submit_first_round_for_review":
+        return (
+          <ActionFormCard
+            key={key}
+            title="提交首轮众筹审核"
+            action="submit_first_round_for_review"
+            description="将提案中的目标、周期与里程碑正式提交给管理员审核本轮；通过后还需「发起已批准轮次」才会开捐。"
+            presetParams={{ proposal_id: String(pid) }}
+            {...common}
+          />
+        );
+      case "launch_approved_round":
+        return (
+          <ActionFormCard
+            key={key}
+            title="发起已批准轮次（上线众筹）"
+            action="launch_approved_round"
+            description="管理员已通过本轮参数审核后，发送此交易创建 campaign 并开始接受捐款。"
+            presetParams={{ proposal_id: String(pid) }}
+            {...common}
+          />
+        );
+      case "submit_follow_on_round_for_review":
+        return (
+          <ActionFormCard
+            key={key}
+            title="提交下一轮众筹审核"
+            action="submit_follow_on_round_for_review"
+            description="上一轮链上已结清后，提交新一轮目标、周期与三条里程碑说明供管理员审核。"
+            fields={[
+              { key: "target", label: "目标金额（ETH）", kind: "eth", required: true, placeholder: "0.1" },
+              { key: "duration", label: "众筹时长（秒）", kind: "bigint", required: true, placeholder: "86400" },
+              { key: "milestone_descs", label: "里程碑描述（每行一条）", kind: "multiline_list", required: true, rows: 4, placeholder: ["第二轮需求定义", "第二轮开发", "第二轮验收"].join("\n") },
+            ]}
+            presetParams={{ proposal_id: String(pid) }}
+            {...common}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderAdminAction = (key: AdminActionKey) => {
+    const pid = proposal.proposal_id;
+    const common = { wallet: address!, proposalId: pid, onSuccess: refresh };
+    switch (key) {
+      case "review_proposal_approve":
+        return (
+          <ActionFormCard
+            key={key}
+            title="通过提案"
+            action="review_proposal"
+            description="审核通过发起人提交的项目草案（GitHub、目标、周期与里程碑说明）。"
+            presetParams={{ proposal_id: String(pid), approve: true }}
+            {...common}
+          />
+        );
+      case "review_proposal_reject":
+        return (
+          <ActionFormCard
+            key={key}
+            title="拒绝提案"
+            action="review_proposal"
+            description="拒绝后该提案不再进入后续众筹流程。"
+            presetParams={{ proposal_id: String(pid), approve: false }}
+            {...common}
+          />
+        );
+      case "review_funding_round":
+        return (
+          <ActionFormCard
+            key={key}
+            title="审核本轮众筹参数"
+            action="review_funding_round"
+            description="通过：发起人可上线本轮；拒绝：清空待审参数，发起人可重新提交。"
+            fields={[
+              {
+                key: "approve",
+                label: "审核通过本轮众筹参数",
+                kind: "boolean",
+                helpText:
+                  "默认勾选并发送：本轮审核通过，发起人可上线众筹。若本轮已在链上通过、但发起人尚未发起（未上线），取消勾选并发送：可撤回这次「通过」，回到未通过状态，发起人需重新提交本轮后再审。若仍在待审中，取消勾选并发送：为拒绝本轮。",
+              },
+            ]}
+            presetParams={{ proposal_id: String(pid), approve: true }}
+            {...common}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -127,33 +259,50 @@ export function ProposalDetailPage() {
       {error ? <ErrorState message={error} /> : null}
 
       <section className="space-y-4">
-        <SectionIntro eyebrow="Action Console" title="提案动作" description="第二阶段已接入动作预检与交易构建。实际是否可执行以 `actions/check` 返回为准，能避免前端重复实现链上状态规则。" />
+        <SectionIntro
+          eyebrow="Action Console"
+          title="提案动作"
+          description="按当前进度只展示与你钱包角色相关的操作；预检与发交易仍以 `actions/check` 与钱包为准。"
+        />
+        {flow ? (
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <p className="text-sm font-medium text-foreground">{flow.phaseHeadline}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{flow.phaseDetail}</p>
+          </div>
+        ) : null}
         {!isConnected || !address ? (
-          <Callout tone="warn" title="请先连接钱包" description="连接钱包后，才能基于当前地址执行提案审核、轮次提交与发起等动作。" />
+          <Callout tone="warn" title="请先连接钱包" description="连接钱包后，系统才能判断你是发起人还是合约管理员（owner），并显示对应操作。" />
         ) : (
-          <div className="grid gap-4 xl:grid-cols-2">
-            <ActionFormCard title="管理员通过提案" action="review_proposal" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id), approve: true }} description="适用于 `pending_review` 阶段的管理员审核。" onSuccess={() => refresh()} />
-            <ActionFormCard title="管理员拒绝提案" action="review_proposal" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id), approve: false }} description="拒绝后提案会离开待审核阶段。" onSuccess={() => refresh()} />
-            <ActionFormCard title="提交首轮 Funding Round 审核" action="submit_first_round_for_review" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id) }} description="适用于提案已通过、但还没有首轮 round 审核记录的阶段。" onSuccess={() => refresh()} />
-            <ActionFormCard title="管理员审核 Funding Round" action="review_funding_round" wallet={address} proposalId={proposal.proposal_id} description="管理员审核当前待审批的 funding round。" fields={[{ key: "approve", label: "审核通过", kind: "boolean" }]} presetParams={{ proposal_id: String(proposal.proposal_id), approve: true }} onSuccess={() => refresh()} />
-            <ActionFormCard title="发起已批准轮次" action="launch_approved_round" wallet={address} proposalId={proposal.proposal_id} presetParams={{ proposal_id: String(proposal.proposal_id) }} description="当 `round_review_state=approved` 时，发起人可把这一轮正式 launch 为 campaign。" onSuccess={() => refresh()} />
-            <ActionFormCard
-              title="提交 Follow-on Round"
-              action="submit_follow_on_round_for_review"
-              wallet={address}
-              proposalId={proposal.proposal_id}
-              description="上一轮结算后，可提交下一轮的目标金额、时长和里程碑描述。金额以 ETH 输入。"
-              fields={[
-                { key: "target", label: "目标金额（ETH）", kind: "eth", required: true, placeholder: "0.1" },
-                { key: "duration", label: "众筹时长（秒）", kind: "bigint", required: true, placeholder: "86400" },
-                { key: "milestone_descs", label: "里程碑描述（每行一条）", kind: "multiline_list", required: true, rows: 4, placeholder: ["第二轮需求定义", "第二轮开发", "第二轮验收"].join("\n") },
-              ]}
-              presetParams={{ proposal_id: String(proposal.proposal_id) }}
-              onSuccess={() => refresh()}
-            />
+          <div className="space-y-6">
+            {adminStepWaiting ? (
+              <Callout
+                tone="info"
+                title="当前步骤：需要管理员"
+                description="此阶段需合约 owner 在链上操作。若你正是管理员，请确认后端 `/api/code-pulse/config` 能返回正确的 `owner_address`（与当前钱包一致）后刷新页面。"
+              />
+            ) : null}
+            {organizerKeys.length > 0 ? (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">发起人操作</p>
+                <div className="grid gap-4 xl:grid-cols-2">{organizerKeys.map(renderOrganizerAction)}</div>
+              </div>
+            ) : null}
+            {adminKeys.length > 0 ? (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">管理员操作（合约 owner）</p>
+                <div className="grid gap-4 xl:grid-cols-2">{adminKeys.map(renderAdminAction)}</div>
+              </div>
+            ) : null}
+            {organizerKeys.length === 0 && adminKeys.length === 0 && !adminStepWaiting ? (
+              <Callout
+                tone="info"
+                title="当前无需你执行提案动作"
+                description="你已连接的钱包既不是本提案发起人，也不是当前步骤所需的管理员；或链上进度尚不需要提案页上的交易。仍可浏览下方里程碑与关联众筹。"
+              />
+            ) : null}
           </div>
         )}
-        <Callout tone="warn" title="提案通过不等于立即募资" description="设计文档要求在 UI 中明确区分 proposal 审核通过和 funding round 审核通过这两个阶段；即使 proposal 已 approved，在 funding round 审核前也还不能 launch。" />
+        <Callout tone="warn" title="提案通过不等于立即募资" description="管理员通过提案后，仍需「提交本轮众筹审核 → 管理员审本轮 → 发起人上线」后，捐款入口才会在 campaign 上开放。" />
       </section>
 
       <section className="space-y-4">

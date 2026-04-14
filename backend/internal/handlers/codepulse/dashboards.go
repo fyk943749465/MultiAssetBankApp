@@ -23,12 +23,19 @@ func AdminDashboard(h *handlers.Handlers) gin.HandlerFunc {
 
 		if !requireDB(h, c) {
 			if sgOK {
+				initAddrs, initSrc := proposalInitiatorAllowlist(ctx, h)
+				var ini any
+				if initSrc == "subgraph" {
+					ini = initiatorAllowlistAsDashboardRows(initAddrs, "subgraph")
+				} else {
+					ini = []any{}
+				}
 				c.JSON(http.StatusOK, gin.H{
 					"pending_proposals":    emptyIfNilP(sgPending),
 					"pending_rounds":       emptyIfNilP(sgRounds),
 					"live_campaigns":       emptyIfNilC(sgLive),
 					"pending_milestones":   []any{},
-					"initiators":           []any{},
+					"initiators":           ini,
 					"platform_donations":   "0",
 					"platform_withdrawals": "0",
 					"data_source":          "subgraph",
@@ -51,9 +58,13 @@ func AdminDashboard(h *handlers.Handlers) gin.HandlerFunc {
 			Order("cp_campaign_milestones.campaign_id, cp_campaign_milestones.milestone_index").
 			Limit(50).Find(&pendingMilestones)
 
-		var initiators []models.CPWalletRole
-		h.DB.Where("role = ? AND scope_type = ? AND active = true", "proposal_initiator", "global").
-			Find(&initiators)
+		initAddrs, initSrc := proposalInitiatorAllowlist(ctx, h)
+		var initiators any
+		if initSrc == "subgraph" {
+			initiators = initiatorAllowlistAsDashboardRows(initAddrs, "subgraph")
+		} else {
+			initiators = proposalInitiatorAllowlistFromDB(h.DB)
+		}
 
 		type sumResult struct {
 			Total string
@@ -81,6 +92,8 @@ func AdminDashboard(h *handlers.Handlers) gin.HandlerFunc {
 			})
 			return
 		}
+
+		initiators = proposalInitiatorAllowlistFromDB(h.DB)
 
 		var pendingProposals []models.CPProposal
 		h.DB.Where("status = ?", "pending_review").
@@ -129,12 +142,7 @@ func InitiatorDashboard(h *handlers.Handlers) gin.HandlerFunc {
 		myProposals, sgNote := OrganizerProposalsSubgraphView(c.Request.Context(), h, addr, myProposals)
 
 		pendingReview := filterProposals(myProposals, func(p models.CPProposal) bool { return p.Status == "pending_review" })
-		approvedWaiting := filterProposals(myProposals, func(p models.CPProposal) bool {
-			if p.Status != "approved" {
-				return false
-			}
-			return p.RoundReviewState == nil || *p.RoundReviewState == ""
-		})
+		approvedWaiting := filterProposals(myProposals, proposalAwaitingFirstRoundSubmit)
 		roundPending := filterProposals(myProposals, func(p models.CPProposal) bool {
 			return p.RoundReviewState != nil && *p.RoundReviewState == "round_review_pending"
 		})

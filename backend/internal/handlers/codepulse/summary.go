@@ -22,10 +22,20 @@ func Summary(h *handlers.Handlers) gin.HandlerFunc {
 		ctx := c.Request.Context()
 
 		if sg := sgQuerySummary(ctx, h); sg.OK {
+			approvedWaiting := sg.Approved
+			if rows, ok := sgQueryAllProposals(ctx, h); ok {
+				var aw int64
+				for _, p := range rows {
+					if proposalInLaunchQueue(p) {
+						aw++
+					}
+				}
+				approvedWaiting = aw
+			}
 			c.JSON(http.StatusOK, gin.H{
 				"proposal_total":     sg.ProposalTotal,
 				"pending_review":     sg.PendingReview,
-				"approved_waiting":   sg.Approved,
+				"approved_waiting":   approvedWaiting,
 				"campaign_total":     sg.CampaignTotal,
 				"fundraising":        sg.Fundraising,
 				"successful":         sg.Successful,
@@ -47,8 +57,16 @@ func Summary(h *handlers.Handlers) gin.HandlerFunc {
 		var pendingReview int64
 		h.DB.Model(&models.CPProposal{}).Where("status = ?", "pending_review").Count(&pendingReview)
 
-		var approved int64
-		h.DB.Model(&models.CPProposal{}).Where("status = ?", "approved").Count(&approved)
+		var approvedWaiting int64
+		h.DB.Model(&models.CPProposal{}).
+			Where(`status = 'approved' AND (
+				round_review_state = 'round_review_approved'
+				OR (
+					(round_review_state IS NULL OR round_review_state = '')
+					AND last_campaign_id IS NULL
+				)
+			)`).
+			Count(&approvedWaiting)
 
 		var campaignTotal int64
 		h.DB.Model(&models.CPCampaign{}).Count(&campaignTotal)
@@ -74,7 +92,7 @@ func Summary(h *handlers.Handlers) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"proposal_total":     proposalTotal,
 			"pending_review":     pendingReview,
-			"approved_waiting":   approved,
+			"approved_waiting":   approvedWaiting,
 			"campaign_total":     campaignTotal,
 			"fundraising":        fundraising,
 			"successful":         successful,
