@@ -26,7 +26,7 @@ export function CodePulseEventLogSection({
   chainId,
   eyebrow = "On-chain",
   title = "链上事件流水",
-  description = "公开只读：数据优先来自子图，不可用时回退索引库。按区块倒序分页，可筛选事件名或提案/活动编号；与详情页时间线同源。",
+  description = "公开只读：索引库有数据时用 PostgreSQL 真分页（每页少量行）；库中无匹配记录时再读子图窗口。按区块倒序，可筛选事件名或提案/活动编号。",
 }: Props) {
   const [eventsPage, setEventsPage] = useState(1);
   const [draftEventName, setDraftEventName] = useState("");
@@ -120,7 +120,7 @@ export function CodePulseEventLogSection({
 
           {data ? (
             <>
-              <div className="overflow-x-auto rounded-lg border">
+              <div className="max-h-[min(70vh,40rem)] overflow-auto rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -176,11 +176,17 @@ export function CodePulseEventLogSection({
                   </TableBody>
                 </Table>
               </div>
-              <PaginationControls pagination={data.pagination} onPageChange={setEventsPage} />
+              <PaginationControls
+                pagination={data.pagination}
+                currentPage={eventsPage}
+                onPageChange={setEventsPage}
+              />
               {data.data_source ? (
                 <p className="text-xs text-muted-foreground">
                   当前数据来源：<span className="font-medium text-foreground">{data.data_source}</span>
-                  {data.data_source === "subgraph" ? "（子图模式下 total 为当前查询窗口内条数）" : null}
+                  {data.data_source === "subgraph"
+                    ? "（仅库中无匹配时的窗口数据；total 为合并窗口内条数）"
+                    : null}
                 </p>
               ) : null}
             </>

@@ -1,7 +1,9 @@
 package codepulse
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -119,7 +121,7 @@ func ActionCheck(h *handlers.Handlers) gin.HandlerFunc {
 
 		resp := ActionCheckResp{RequiredRole: actionRoleMap[req.Action]}
 
-		allowed, cur, rc, rm := codePulseActionGate(h, req)
+		allowed, cur, rc, rm := codePulseActionGate(h, c.Request.Context(), req)
 		resp.CurrentState = cur
 		if !allowed {
 			resp.ReasonCode = rc
@@ -137,16 +139,28 @@ func ActionCheck(h *handlers.Handlers) gin.HandlerFunc {
 	}
 }
 
-// codePulseActionGate 角色 + 读库状态预检（PostgreSQL 为准）；供 actions/check 与 tx/build、tx/submit 共用。
-func codePulseActionGate(h *handlers.Handlers, req ActionCheckReq) (allowed bool, currentState, reasonCode, reasonMsg string) {
+// codePulseActionGate 角色 + 读库状态预检。remove_developer 的目标开发者仅以 PostgreSQL 为准（须等 RPC 索引写入）。organizer 在库无记录时可参考子图活动。供 actions/check 与 tx/build、tx/submit 共用。
+func codePulseActionGate(h *handlers.Handlers, ctx context.Context, req ActionCheckReq) (allowed bool, currentState, reasonCode, reasonMsg string) {
 	if requiredRole := actionRoleMap[req.Action]; requiredRole != "" {
-		if !checkWalletRole(h, normalizeAddress(req.Wallet), requiredRole, req.ProposalID, req.CampaignID) {
+		if !checkWalletRole(h, ctx, normalizeAddress(req.Wallet), requiredRole, req.ProposalID, req.CampaignID) {
 			return false, "", reasonRoleMissing, "当前钱包缺少所需角色: " + requiredRole
 		}
 	}
 	if req.Action == "set_proposal_initiator" {
 		if blocked, msg := setProposalInitiatorRevokeBlocked(h, req); blocked {
 			return false, "", reasonInitiatorRevokePolicy, msg
+		}
+	}
+	if req.Action == "remove_developer" {
+		if req.CampaignID == nil {
+			return false, "", reasonStateInvalid, errMissingCampaignID
+		}
+		dev := normalizeAddress(paramsAccountString(req.Params))
+		if dev == "" {
+			return false, "", reasonStateInvalid, "缺少 params.account（要移除的开发者地址）"
+		}
+		if !developerActiveInPostgres(h, *req.CampaignID, dev) {
+			return false, "", reasonStateInvalid, "该地址在数据库 cp_campaign_developers 中尚无可移除的活跃记录。移除开发者须以索引库为准：请等待 RPC 扫块写入 DeveloperAdded 后再试；子图仅作展示，预检不认子图。"
 		}
 	}
 	stateOK, state, reason := checkActionState(h, req)
@@ -254,7 +268,7 @@ func anyIntPtr(v any) *int {
 	}
 }
 
-func checkWalletRole(h *handlers.Handlers, addr, role string, proposalID, campaignID *uint64) bool {
+func checkWalletRole(h *handlers.Handlers, ctx context.Context, addr, role string, proposalID, campaignID *uint64) bool {
 	switch role {
 	case "admin", "proposal_initiator":
 		active, err := resolveGlobalRole(h, addr, role, true)
@@ -271,18 +285,48 @@ func checkWalletRole(h *handlers.Handlers, addr, role string, proposalID, campai
 
 	switch role {
 	case "organizer":
-		return isOrganizerOf(h, addr, proposalID, campaignID)
+		return isOrganizerOf(ctx, h, addr, proposalID, campaignID)
 	case "developer":
-		return isDeveloperOf(h, addr, campaignID)
+		return isDeveloperOf(ctx, h, addr, campaignID)
 	case "donor":
 		return isDonorOf(h, addr, campaignID)
 	}
 	return false
 }
 
-func isOrganizerOf(h *handlers.Handlers, addr string, proposalID, campaignID *uint64) bool {
+func paramsAccountString(params any) string {
+	m, ok := params.(map[string]any)
+	if !ok || m == nil {
+		return ""
+	}
+	v, ok := m["account"]
+	if !ok || v == nil {
+		return ""
+	}
+	switch t := v.(type) {
+	case string:
+		return strings.TrimSpace(t)
+	default:
+		return strings.TrimSpace(fmt.Sprint(t))
+	}
+}
+
+// developerActiveInPostgres 仅认索引库：用于 remove_developer 预检，子图-only 不算。
+func developerActiveInPostgres(h *handlers.Handlers, campaignID uint64, devAddr string) bool {
+	if h.DB == nil {
+		return false
+	}
+	devAddr = normalizeAddress(devAddr)
+	var n int64
+	h.DB.Table("cp_campaign_developers").
+		Where(whereCampaignID+" AND LOWER(developer_address) = ? AND is_active = true", campaignID, devAddr).
+		Count(&n)
+	return n > 0
+}
+
+func isOrganizerOf(ctx context.Context, h *handlers.Handlers, addr string, proposalID, campaignID *uint64) bool {
 	var count int64
-	if proposalID != nil {
+	if proposalID != nil && h.DB != nil {
 		h.DB.Table("cp_proposals").
 			Where(whereProposalID+" AND LOWER(organizer_address) = ?", *proposalID, addr).
 			Count(&count)
@@ -290,7 +334,7 @@ func isOrganizerOf(h *handlers.Handlers, addr string, proposalID, campaignID *ui
 			return true
 		}
 	}
-	if campaignID != nil {
+	if campaignID != nil && h.DB != nil {
 		h.DB.Table("cp_campaigns").
 			Where(whereCampaignID+" AND LOWER(organizer_address) = ?", *campaignID, addr).
 			Count(&count)
@@ -298,11 +342,18 @@ func isOrganizerOf(h *handlers.Handlers, addr string, proposalID, campaignID *ui
 			return true
 		}
 	}
+	if campaignID != nil && sgAvailable(h) {
+		if ca, ok := sgQuerySingleCampaignFromSubgraph(ctx, h, *campaignID); ok && ca != nil {
+			if normalizeAddress(ca.OrganizerAddress) == addr {
+				return true
+			}
+		}
+	}
 	return false
 }
 
-func isDeveloperOf(h *handlers.Handlers, addr string, campaignID *uint64) bool {
-	if campaignID == nil {
+func isDeveloperOf(_ context.Context, h *handlers.Handlers, addr string, campaignID *uint64) bool {
+	if campaignID == nil || h.DB == nil {
 		return false
 	}
 	var count int64

@@ -699,6 +699,129 @@ func sgFetchCampaignTimelineFromSubgraph(ctx context.Context, h *handlers.Handle
 	return all, true
 }
 
+// sgFetchCampaignDevelopersFromSubgraph 按 campaignId 分页拉 DeveloperAdded / DeveloperRemoved，按区块与实体 id 排序后折叠为当前激活开发者（与活动页时间线同源）。
+func sgFetchCampaignDevelopersFromSubgraph(ctx context.Context, h *handlers.Handlers, campaignID uint64) ([]models.CPCampaignDeveloper, bool) {
+	if !sgAvailable(h) {
+		return nil, false
+	}
+	cidStr := strconv.FormatUint(campaignID, 10)
+
+	type devEv struct {
+		add   bool
+		addr  string
+		block uint64
+		id    string
+		ts    time.Time
+		tx    string
+	}
+	var events []devEv
+
+	appendPaged := func(gql, root string, isAdd bool) bool {
+		skip := 0
+		for {
+			raw, err := h.SubgraphCodePulse.Query(ctx, gql, map[string]any{"cid": cidStr, "skip": skip})
+			if err != nil {
+				return false
+			}
+			var wrap map[string]json.RawMessage
+			if json.Unmarshal(raw, &wrap) != nil {
+				return false
+			}
+			arrRaw, ok := wrap[root]
+			if !ok {
+				return false
+			}
+			var rows []struct {
+				ID              string          `json:"id"`
+				Developer       json.RawMessage `json:"developer"`
+				BlockNumber     json.RawMessage `json:"blockNumber"`
+				BlockTimestamp  json.RawMessage `json:"blockTimestamp"`
+				TransactionHash json.RawMessage `json:"transactionHash"`
+			}
+			if json.Unmarshal(arrRaw, &rows) != nil {
+				return false
+			}
+			if len(rows) == 0 {
+				return true
+			}
+			for _, r := range rows {
+				txNorm, ok := timelineNormTx(r.TransactionHash)
+				if !ok {
+					continue
+				}
+				bn, ok := timelineScalarUint64(r.BlockNumber)
+				if !ok {
+					continue
+				}
+				ts, ok := timelineScalarUnixUTC(r.BlockTimestamp)
+				if !ok {
+					continue
+				}
+				dev, ok := scalarString(r.Developer)
+				if !ok {
+					continue
+				}
+				addr := normalizeAddress(dev)
+				events = append(events, devEv{add: isAdd, addr: addr, block: bn, id: r.ID, ts: ts, tx: txNorm})
+			}
+			skip += len(rows)
+			if len(rows) < 1000 {
+				return true
+			}
+		}
+	}
+
+	if !appendPaged(sgTimelineDevAddedPage, "developerAddeds", true) {
+		return nil, false
+	}
+	if !appendPaged(sgTimelineDevRemovedPage, "developerRemoveds", false) {
+		return nil, false
+	}
+
+	sort.Slice(events, func(i, j int) bool {
+		if events[i].block != events[j].block {
+			return events[i].block < events[j].block
+		}
+		return events[i].id < events[j].id
+	})
+
+	active := make(map[string]bool)
+	type addMeta struct {
+		ts time.Time
+		tx string
+	}
+	meta := make(map[string]addMeta)
+	for _, e := range events {
+		if e.add {
+			active[e.addr] = true
+			meta[e.addr] = addMeta{ts: e.ts, tx: e.tx}
+		} else {
+			active[e.addr] = false
+		}
+	}
+
+	out := make([]models.CPCampaignDeveloper, 0)
+	for addr, on := range active {
+		if !on {
+			continue
+		}
+		m := meta[addr]
+		tx := m.tx
+		ts := m.ts
+		out = append(out, models.CPCampaignDeveloper{
+			CampaignID:       campaignID,
+			DeveloperAddress: addr,
+			IsActive:         true,
+			AddedTxHash:      &tx,
+			AddedAt:          &ts,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].DeveloperAddress < out[j].DeveloperAddress
+	})
+	return out, true
+}
+
 func pgFetchCampaignTimelineEvents(db *gorm.DB, campaignID uint64, eventNames []string) ([]models.CPEventLog, error) {
 	var events []models.CPEventLog
 	err := db.Model(&models.CPEventLog{}).

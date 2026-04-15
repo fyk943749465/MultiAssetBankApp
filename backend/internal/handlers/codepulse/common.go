@@ -47,6 +47,24 @@ func parsePagination(c *gin.Context) (page, pageSize, offset int) {
 	return
 }
 
+// applyCPEventLogQueryFilters applies event_name / proposal_id / campaign_id query filters to a cp_event_log query.
+func applyCPEventLogQueryFilters(q *gorm.DB, c *gin.Context) *gorm.DB {
+	if v := c.Query("event_name"); v != "" {
+		q = q.Where("event_name = ?", v)
+	}
+	if v := c.Query("proposal_id"); v != "" {
+		if pid, err := strconv.ParseUint(v, 10, 64); err == nil {
+			q = q.Where("proposal_id = ?", pid)
+		}
+	}
+	if v := c.Query("campaign_id"); v != "" {
+		if cid, err := strconv.ParseUint(v, 10, 64); err == nil {
+			q = q.Where("campaign_id = ?", cid)
+		}
+	}
+	return q
+}
+
 func requireDB(h *handlers.Handlers, c *gin.Context) bool {
 	if h.DB == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database not configured"})

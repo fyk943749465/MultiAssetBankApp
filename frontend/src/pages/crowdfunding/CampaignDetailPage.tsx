@@ -21,11 +21,29 @@ import {
   TimelineList,
 } from "../../features/codepulse/components";
 import { computeProgressPercent, formatDateTime, formatWei, shortHash, titleCaseStatus } from "../../features/codepulse/format";
-import type { CampaignContributionResponse, CampaignDetailResponse, TimelineResponse } from "../../features/codepulse/types";
+import type {
+  CampaignContributionResponse,
+  CampaignDetailResponse,
+  CampaignDevelopersSource,
+  TimelineResponse,
+} from "../../features/codepulse/types";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+
+function labelDevelopersSource(src: CampaignDevelopersSource | undefined): string {
+  switch (src) {
+    case "subgraph":
+      return "子图（DeveloperAdded / DeveloperRemoved 折叠）";
+    case "database":
+      return "PostgreSQL（cp_campaign_developers，RPC/子图同步写入）";
+    case "empty":
+      return "无（未配置子图且无数据库）";
+    default:
+      return "未知";
+  }
+}
 
 /** 路由里可能是缺失、JS undefined 被拼进 URL 的字面量 "undefined"、或非数字。 */
 function normalizeCampaignRouteId(raw: string | undefined): string {
@@ -268,7 +286,7 @@ export function CampaignDetailPage() {
               wallet={address}
               campaignId={detail.campaign.campaign_id}
               presetParams={{ campaign_id: String(detail.campaign.campaign_id) }}
-              description="在链上将某个地址从本活动开发者名单中标记为移除（不再作为活跃开发者参与后续份额逻辑）。仅发起人（organizer）可操作。请填写要移除的开发者地址。若该地址本就不在名单中、或移除违反合约约束（例如仍有未结清阶段），预检或链上会失败。发起交易需支付 gas。"
+              description="在链上将某个地址从本活动开发者名单中移除。仅发起人（organizer）可操作。预检要求：要移除的地址必须在 PostgreSQL 的 cp_campaign_developers 中为活跃记录（须等 RPC 索引扫块写入 DeveloperAdded）；**子图仅有、库中尚无时不通过预检**，与详情页名单可能来自子图不同。链上模拟仍会执行；若合约拒绝也会 revert。发起交易需支付 gas。"
               fields={[{ key: "account", label: "开发者地址", kind: "address", required: true, placeholder: "0x..." }]}
               onSuccess={() => refresh()}
             />
@@ -324,7 +342,19 @@ export function CampaignDetailPage() {
       </section>
 
       <section className="space-y-4">
-        <SectionIntro eyebrow="Developers" title="开发者名单" description="当前活动中处于激活状态的开发者。" />
+        <SectionIntro
+          eyebrow="Developers"
+          title="开发者名单"
+          description="优先从子图按链上事件折叠当前激活开发者；子图不可用时再读库表 cp_campaign_developers。与下方「贡献」「时间线」的数据来源相互独立。"
+        />
+        {detail.developers_source ? (
+          <p className="text-xs text-muted-foreground">
+            开发者名单数据来源：<span className="font-medium text-foreground">{labelDevelopersSource(detail.developers_source)}</span>
+            {detail.developers_source === "subgraph" ? (
+              <span className="text-muted-foreground"> · 活动主体仍为子图时名单与子图一致</span>
+            ) : null}
+          </p>
+        ) : null}
         {detail.developers.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {detail.developers.map((developer) => (

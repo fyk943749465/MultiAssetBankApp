@@ -294,8 +294,9 @@ func adminEventLogListFromSubgraph(h *handlers.Handlers, c *gin.Context, page, p
 	return true
 }
 
-// AdminEventLogList 分页列出链上事件：默认优先读 Code Pulse 子图（与增量解析同源）；子图不可用或未配置时回退 cp_event_log。
-// 子图模式下 total 为「当前查询窗口内（每类最多 N 条合并后）满足筛选条件的条数」，深分页可能不足一页。
+// AdminEventLogList 分页列出链上事件。
+// 若 PostgreSQL 中已有匹配筛选条件的 cp_event_log 行，则始终用 SQL OFFSET/LIMIT 做全局分页（首页长列表不一次拉全量）。
+// 仅当库中 count=0 时回退子图合并窗口（与增量解析同源；total 为窗口内条数）。
 // 查询参数：page、page_size、event_name、proposal_id、campaign_id（可选过滤）。
 // @Summary      List indexed event log (admin)
 // @Tags         code-pulse-admin
@@ -305,44 +306,50 @@ func AdminEventLogList(h *handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		page, pageSize, offset := parsePagination(c)
 
+		if h.DB != nil {
+			base := applyCPEventLogQueryFilters(h.DB.Model(&models.CPEventLog{}), c)
+			var total int64
+			if err := base.Count(&total).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if total > 0 {
+				var rows []models.CPEventLog
+				q := applyCPEventLogQueryFilters(h.DB.Model(&models.CPEventLog{}), c)
+				if err := q.Order("block_number DESC, log_index DESC").
+					Offset(offset).Limit(pageSize).Find(&rows).Error; err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					return
+				}
+				c.JSON(http.StatusOK, gin.H{
+					"events":      rows,
+					"pagination":  Pagination{Page: page, PageSize: pageSize, Total: total},
+					"data_source": "database",
+				})
+				return
+			}
+		}
+
 		if adminEventLogListFromSubgraph(h, c, page, pageSize, offset) {
 			return
 		}
 
-		if !requireDB(h, c) {
+		if h.DB != nil {
+			var rows []models.CPEventLog
+			q := applyCPEventLogQueryFilters(h.DB.Model(&models.CPEventLog{}), c)
+			if err := q.Order("block_number DESC, log_index DESC").
+				Offset(offset).Limit(pageSize).Find(&rows).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"events":      rows,
+				"pagination":  Pagination{Page: page, PageSize: pageSize, Total: 0},
+				"data_source": "database",
+			})
 			return
 		}
 
-		q := h.DB.Model(&models.CPEventLog{})
-
-		if v := c.Query("event_name"); v != "" {
-			q = q.Where("event_name = ?", v)
-		}
-		if v := c.Query("proposal_id"); v != "" {
-			if pid, err := strconv.ParseUint(v, 10, 64); err == nil {
-				q = q.Where("proposal_id = ?", pid)
-			}
-		}
-		if v := c.Query("campaign_id"); v != "" {
-			if cid, err := strconv.ParseUint(v, 10, 64); err == nil {
-				q = q.Where("campaign_id = ?", cid)
-			}
-		}
-
-		var total int64
-		q.Count(&total)
-
-		var rows []models.CPEventLog
-		if err := q.Order("block_number DESC, log_index DESC").
-			Offset(offset).Limit(pageSize).Find(&rows).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"events":      rows,
-			"pagination":  Pagination{Page: page, PageSize: pageSize, Total: total},
-			"data_source": "database",
-		})
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database not configured"})
 	}
 }

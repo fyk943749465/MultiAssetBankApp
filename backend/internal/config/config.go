@@ -18,14 +18,19 @@ type Config struct {
 	BankIndexerStartBlock        uint64 // optional: first block to scan (0 = use head-2000 on init)
 	SubgraphURL                  string // optional: The Graph Studio query URL (bank)
 	SubgraphAPIKey               string // optional: Studio API key (Bearer)
+	// SubgraphQueryCacheTTLSeconds：子图 GraphQL 响应内存缓存秒数（相同 query+variables 命中则不发 HTTP）。0=关闭。默认 30，减轻 Studio 免费档每日约 3000 次查询压力。
+	SubgraphQueryCacheTTLSeconds int
+	// SubgraphQueryCacheMaxEntries：缓存条数上限（仅 TTL>0 时生效），默认 512。
+	SubgraphQueryCacheMaxEntries int
 	CodePulseAddress             string // optional: CodePulseAdvanced contract address (hex)
 	SubgraphCodePulseURL         string // optional: Code Pulse subgraph query URL
 	CodePulseSubgraphStartBlock  uint64 // optional: 子图同步起始块（减 1 后作为首次 blockNumber_gt 游标；0 表示从链起点拉取，可能很慢）
-	CodePulseSubgraphPollSeconds int    // optional: 子图同步轮询间隔秒数，默认 25
+	CodePulseSubgraphPollSeconds int    // optional: 子图同步轮询间隔秒数，默认 90（约 960 次/天，为 API 留出 Studio 配额）
 	CodePulseIndexerStartBlock   uint64 // optional: RPC 扫块索引起始块（0 表示与 Bank 相同：首次为 safe 头往前约 2000 块）
 	// CodePulseSubgraphSync 为 true 时启用子图→PostgreSQL 增量同步；默认 false，数据库权威数据来自 RPC 扫块（与 Bank 一致）。
 	CodePulseSubgraphSync bool
 	// 以下为 Bank / Code Pulse RPC 索引器共用，减轻 Infura 等 429：轮询间隔、分块间隔、每段最大块数。
+	// IndexerPollSeconds：扫块轮询秒数，默认 120（上界多为 finalized/safe，分钟级才前进，过频多为空转）；环境变量 INDEXER_POLL_SECONDS 可覆盖，≥5。
 	IndexerPollSeconds        int
 	IndexerFilterChunkPauseMs int
 	IndexerMaxBlockSpan       uint64
@@ -41,17 +46,30 @@ func Load() (*Config, error) {
 
 	startBlk, _ := strconv.ParseUint(strings.TrimSpace(os.Getenv("BANK_INDEXER_START_BLOCK")), 10, 64)
 	cpSubStart, _ := strconv.ParseUint(strings.TrimSpace(os.Getenv("CODE_PULSE_SUBGRAPH_START_BLOCK")), 10, 64)
-	cpPoll := 25
+	cpPoll := 90
 	if v := strings.TrimSpace(os.Getenv("CODE_PULSE_SUBGRAPH_POLL_SECONDS")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			cpPoll = n
+		}
+	}
+
+	sgCacheTTL := 30
+	if v := strings.TrimSpace(os.Getenv("SUBGRAPH_QUERY_CACHE_TTL_SECONDS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			sgCacheTTL = n
+		}
+	}
+	sgCacheMax := 512
+	if v := strings.TrimSpace(os.Getenv("SUBGRAPH_QUERY_CACHE_MAX_ENTRIES")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			sgCacheMax = n
 		}
 	}
 	cpIdxStart, _ := strconv.ParseUint(strings.TrimSpace(os.Getenv("CODE_PULSE_INDEXER_START_BLOCK")), 10, 64)
 	cpSubSync := strings.EqualFold(strings.TrimSpace(os.Getenv("CODE_PULSE_SUBGRAPH_SYNC")), "true") ||
 		strings.TrimSpace(os.Getenv("CODE_PULSE_SUBGRAPH_SYNC")) == "1"
 
-	idxPoll := 35
+	idxPoll := 120
 	if v := strings.TrimSpace(os.Getenv("INDEXER_POLL_SECONDS")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n >= 5 {
 			idxPoll = n
@@ -90,6 +108,8 @@ func Load() (*Config, error) {
 		BankIndexerStartBlock:        startBlk,
 		SubgraphURL:                  os.Getenv("SUBGRAPH_URL"),
 		SubgraphAPIKey:               os.Getenv("SUBGRAPH_API_KEY"),
+		SubgraphQueryCacheTTLSeconds: sgCacheTTL,
+		SubgraphQueryCacheMaxEntries: sgCacheMax,
 		CodePulseAddress:             os.Getenv("CODE_PULSE_ADDRESS"),
 		SubgraphCodePulseURL:         os.Getenv("SUBGRAPH_CODE_PULSE_URL"),
 		CodePulseSubgraphStartBlock:  cpSubStart,

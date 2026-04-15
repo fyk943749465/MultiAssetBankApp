@@ -237,11 +237,18 @@ export type CampaignListResponse = {
   pagination: Pagination;
 };
 
+/** 活动详情里开发者名单来自哪里（与后端 developers_source 一致） */
+export type CampaignDevelopersSource = "subgraph" | "database" | "empty";
+
 export type CampaignDetailResponse = {
   campaign: CPCampaign;
   milestones: CPCampaignMilestone[];
   developers: CPCampaignDeveloper[];
+  /** 开发者名单：子图折叠事件优先；子图不可用时为 PostgreSQL cp_campaign_developers */
+  developers_source?: CampaignDevelopersSource;
   donor_count: number;
+  /** 活动主体 campaign 字段来源：subgraph | database */
+  data_source?: string;
 };
 
 export type TimelineResponse = {

@@ -1125,7 +1125,7 @@ func sgQueryDeveloperDashboard(ctx context.Context, h *handlers.Handlers, addr s
 }
 
 // ──────────────────────────────────────────────
-// Admin dashboard 子图视图（轻量：避免全量 1000×多实体 + 5000 donated）
+// Admin dashboard 子图视图（轻量：避免全量 1000×多实体；各实体 first≤1000，符合 Studio 上限）
 // ──────────────────────────────────────────────
 
 const sgAdminRecentProposalSubmitsQuery = `
@@ -1138,13 +1138,13 @@ const sgAdminRecentProposalSubmitsQuery = `
 
 const cpSubgraphAdminDashboardPipeline = `
 query CpAdminPipe($pids: [BigInt!]!) {
-  proposalRevieweds(first: 2500, orderBy: blockNumber, orderDirection: asc, where: { proposalId_in: $pids }) {
+  proposalRevieweds(first: 1000, orderBy: blockNumber, orderDirection: asc, where: { proposalId_in: $pids }) {
     proposalId approved blockNumber
   }
-  fundingRoundSubmittedForReviews(first: 2500, orderBy: blockNumber, orderDirection: asc, where: { proposalId_in: $pids }) {
+  fundingRoundSubmittedForReviews(first: 1000, orderBy: blockNumber, orderDirection: asc, where: { proposalId_in: $pids }) {
     proposalId blockNumber
   }
-  fundingRoundRevieweds(first: 2500, orderBy: blockNumber, orderDirection: asc, where: { proposalId_in: $pids }) {
+  fundingRoundRevieweds(first: 1000, orderBy: blockNumber, orderDirection: asc, where: { proposalId_in: $pids }) {
     proposalId approved blockNumber
   }
   crowdfundingLauncheds(first: 900, orderBy: blockNumber, orderDirection: asc, where: { proposalId_in: $pids }) {
@@ -1163,7 +1163,7 @@ const sgAdminRecentLaunchesForLiveQuery = `
 
 const sgAdminDonatedByCampaignsQuery = `
 query CpAdminDon($cids: [BigInt!]!) {
-  donateds(first: 2000, orderBy: blockNumber, orderDirection: desc, where: { campaignId_in: $cids }) {
+  donateds(first: 1000, orderBy: blockNumber, orderDirection: desc, where: { campaignId_in: $cids }) {
     campaignId contributor amount
   }
 }

@@ -67,7 +67,7 @@ func TxBuild(h *handlers.Handlers) gin.HandlerFunc {
 			return
 		}
 		ac := TxBuildToActionCheckReq(req)
-		allowed, _, rc, rm := codePulseActionGate(h, ac)
+		allowed, _, rc, rm := codePulseActionGate(h, c.Request.Context(), ac)
 		if !allowed {
 			st := http.StatusConflict
 			if rc == reasonRoleMissing {
@@ -156,7 +156,7 @@ func TxSubmit(h *handlers.Handlers) gin.HandlerFunc {
 			return
 		}
 		ac := TxBuildToActionCheckReq(req)
-		allowed, _, rc, rm := codePulseActionGate(h, ac)
+		allowed, _, rc, rm := codePulseActionGate(h, c.Request.Context(), ac)
 		if !allowed {
 			st := http.StatusConflict
 			if rc == reasonRoleMissing {

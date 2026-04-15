@@ -23,7 +23,7 @@ import (
 
 const (
 	codePulseSyncName     = "code_pulse_subgraph"
-	defaultCPPoll         = 25 * time.Second
+	defaultCPPoll         = 90 * time.Second
 	defaultCPFetchFirst   = 150 // 每类实体上限；18 类同询，过大易超时
 	proposalPendingReview = "pending_review"
 	proposalApproved      = "approved"

@@ -8,8 +8,8 @@ import (
 var (
 	indexerMu sync.RWMutex
 
-	// 以下默认值偏保守，减轻 Infura 等托管节点的 429；可在进程启动时通过 Configure 覆盖。
-	pollInterval           = 35 * time.Second
+	// 以下默认值与 config 默认一致；main 启动时会 Configure 注入。上界多为 finalized，不必秒级轮询。
+	pollInterval           = 120 * time.Second
 	filterChunkPauseDur    = 800 * time.Millisecond
 	maxFilterBlockSpan uint64 = 1000
 )

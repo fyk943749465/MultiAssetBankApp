@@ -203,13 +203,22 @@ func CampaignDetail(h *handlers.Handlers) gin.HandlerFunc {
 				"donor_count": ca.DonorCount,
 				"data_source": "subgraph",
 			}
+			if sgDevs, ok := sgFetchCampaignDevelopersFromSubgraph(ctx, h, cid); ok {
+				resp["developers"] = sgDevs
+				resp["developers_source"] = "subgraph"
+			} else if h.DB != nil {
+				var developers []models.CPCampaignDeveloper
+				h.DB.Where("campaign_id = ? AND is_active = true", cid).Find(&developers)
+				resp["developers"] = developers
+				resp["developers_source"] = "database"
+			} else {
+				resp["developers"] = []models.CPCampaignDeveloper{}
+				resp["developers_source"] = "empty"
+			}
 			if h.DB != nil {
 				var milestones []models.CPCampaignMilestone
 				h.DB.Where(whereCampaignID, cid).Order("milestone_index").Find(&milestones)
 				resp["milestones"] = milestones
-				var developers []models.CPCampaignDeveloper
-				h.DB.Where("campaign_id = ? AND is_active = true", cid).Find(&developers)
-				resp["developers"] = developers
 			}
 			c.JSON(http.StatusOK, resp)
 			return
@@ -235,11 +244,12 @@ func CampaignDetail(h *handlers.Handlers) gin.HandlerFunc {
 		h.DB.Model(&models.CPContribution{}).Where(whereCampaignID, cid).Count(&donorCount)
 
 		c.JSON(http.StatusOK, gin.H{
-			"campaign":    campaign,
-			"milestones":  milestones,
-			"developers":  developers,
-			"donor_count": donorCount,
-			"data_source": "database",
+			"campaign":           campaign,
+			"milestones":         milestones,
+			"developers":         developers,
+			"developers_source":  "database",
+			"donor_count":        donorCount,
+			"data_source":        "database",
 		})
 	}
 }

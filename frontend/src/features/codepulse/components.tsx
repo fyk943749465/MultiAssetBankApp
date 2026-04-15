@@ -550,32 +550,37 @@ export function ContributionTable({
 export function PaginationControls({
   pagination,
   onPageChange,
+  /** 与后端返回的 page 不同步时（例如筛选后）用本地页码驱动按钮，避免卡在某一页 */
+  currentPage,
 }: {
   readonly pagination: Pagination;
   readonly onPageChange: (page: number) => void;
+  readonly currentPage?: number;
 }) {
-  const totalPages = Math.max(
-    1,
-    Math.ceil(pagination.total / pagination.page_size)
-  );
+  const page = currentPage ?? pagination.page;
+  const pageSize =
+    typeof pagination.page_size === "number" && pagination.page_size > 0
+      ? pagination.page_size
+      : 20;
+  const totalPages = Math.max(1, Math.ceil(pagination.total / pageSize));
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-muted-foreground">
-        第 {pagination.page} / {totalPages} 页，共 {pagination.total} 条
+        第 {page} / {totalPages} 页，共 {pagination.total} 条（每页 {pageSize} 条）
       </p>
       <div className="flex gap-2">
         <Button
           variant="outline"
           size="sm"
-          disabled={pagination.page <= 1}
-          onClick={() => onPageChange(pagination.page - 1)}
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
         >
           上一页
         </Button>
         <Button
           size="sm"
-          disabled={pagination.page >= totalPages}
-          onClick={() => onPageChange(pagination.page + 1)}
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
         >
           下一页
         </Button>

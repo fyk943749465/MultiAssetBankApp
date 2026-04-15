@@ -87,15 +87,24 @@ func main() {
 		}
 	}
 
+	sgClientCfg := subgraph.ClientConfig{
+		QueryCacheTTL:        time.Duration(cfg.SubgraphQueryCacheTTLSeconds) * time.Second,
+		QueryCacheMaxEntries: cfg.SubgraphQueryCacheMaxEntries,
+	}
+	if cfg.SubgraphQueryCacheTTLSeconds > 0 {
+		log.Printf("subgraph: 查询缓存 TTL=%v max_entries=%d（SUBGRAPH_QUERY_CACHE_TTL_SECONDS=0 可关闭；减轻 Studio 每日查询配额消耗）",
+			sgClientCfg.QueryCacheTTL, sgClientCfg.QueryCacheMaxEntries)
+	}
+
 	var subClient *subgraph.Client
 	if u := strings.TrimSpace(cfg.SubgraphURL); u != "" {
-		subClient = subgraph.New(u, cfg.SubgraphAPIKey)
+		subClient = subgraph.New(u, cfg.SubgraphAPIKey, sgClientCfg)
 		log.Printf("subgraph: 已配置 SUBGRAPH_URL（充值/提现子图 API 可用）")
 	}
 
 	var cpSubClient *subgraph.Client
 	if u := strings.TrimSpace(cfg.SubgraphCodePulseURL); u != "" {
-		cpSubClient = subgraph.New(u, cfg.SubgraphAPIKey)
+		cpSubClient = subgraph.New(u, cfg.SubgraphAPIKey, sgClientCfg)
 		log.Printf("subgraph: 已配置 SUBGRAPH_CODE_PULSE_URL（众筹子图 API 可用）")
 	}
 
