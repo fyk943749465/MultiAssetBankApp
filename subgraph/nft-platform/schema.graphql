@@ -1,0 +1,107 @@
+type ItemListed @entity(immutable: true) {
+  id: Bytes!
+  collection: Bytes! # address
+  tokenId: BigInt! # uint256
+  seller: Bytes! # address
+  price: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ItemSold @entity(immutable: true) {
+  id: Bytes!
+  collection: Bytes! # address
+  tokenId: BigInt! # uint256
+  seller: Bytes! # address
+  buyer: Bytes! # address
+  price: BigInt! # uint256
+  platformFee: BigInt! # uint256
+  royaltyAmount: BigInt! # uint256
+  feeBpsSnapshot: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ListingCanceled @entity(immutable: true) {
+  id: Bytes!
+  collection: Bytes! # address
+  tokenId: BigInt! # uint256
+  seller: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ListingPriceUpdated @entity(immutable: true) {
+  id: Bytes!
+  collection: Bytes! # address
+  tokenId: BigInt! # uint256
+  seller: Bytes! # address
+  oldPrice: BigInt! # uint256
+  newPrice: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MaxRoyaltyBpsUpdated @entity(immutable: true) {
+  id: Bytes!
+  newBps: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OwnershipTransferred @entity(immutable: true) {
+  id: Bytes!
+  previousOwner: Bytes! # address
+  newOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Paused @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PlatformFeeUpdated @entity(immutable: true) {
+  id: Bytes!
+  oldBps: BigInt! # uint256
+  newBps: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PlatformFeesWithdrawn @entity(immutable: true) {
+  id: Bytes!
+  to: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Unpaused @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type UntrackedEthWithdrawn @entity(immutable: true) {
+  id: Bytes!
+  to: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
