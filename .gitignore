@@ -12,3 +12,10 @@ frontend/.env.*
 subgraph/node_modules/
 subgraph/build/
 subgraph/generated/
+
+# docs：本地公示稿与生成脚本（不入库）
+docs/snapshot_markdown_preview.py
+docs/build_donation_notice_docx.py
+docs/大庙捐款支持公示-预览.png
+docs/大庙捐款支持公示.docx
+docs/大庙捐款支持公示.md

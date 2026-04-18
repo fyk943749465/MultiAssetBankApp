@@ -42,3 +42,94 @@ dataSources:
         - event: Transfer(indexed address,indexed address,indexed uint256)
           handler: handleTransfer
       file: ./src/nft-template.ts
+  - kind: ethereum
+    name: NFTFactory
+    network: sepolia
+    source:
+      address: "0x32CcF2565f382519d6f8ca2fE12Ba7a5ac1f8C90"
+      abi: NFTFactory
+      startBlock: 10683729
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - CollectionCreated
+        - CreationFeeUpdated
+        - EthReceived
+        - NFTFactoryOwnershipTransferred
+        - Paused
+        - RefundSent
+        - Unpaused
+        - Withdrawal
+      abis:
+        - name: NFTFactory
+          file: ./abis/NFTFactory.json
+      eventHandlers:
+        - event: CollectionCreated(indexed address,indexed address,uint256,bytes32)
+          handler: handleCollectionCreated
+        - event: CreationFeeUpdated(uint256,uint256)
+          handler: handleCreationFeeUpdated
+        - event: EthReceived(indexed address,uint256)
+          handler: handleEthReceived
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+        - event: Paused(address)
+          handler: handlePaused
+        - event: RefundSent(indexed address,uint256)
+          handler: handleRefundSent
+        - event: Unpaused(address)
+          handler: handleUnpaused
+        - event: Withdrawal(indexed address,uint256)
+          handler: handleWithdrawal
+      file: ./src/nft-factory.ts
+  - kind: ethereum
+    name: NFTMarketPlace
+    network: sepolia
+    source:
+      address: "0x7Bf717D5c1262756e80B99f7eb6C8838ceA5C9F6"
+      abi: NFTMarketPlace
+      startBlock: 10683734
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - NFTMarketItemListed
+        - NFTMarketItemSold
+        - NFTMarketListingCanceled
+        - NFTMarketListingPriceUpdated
+        - NFTMarketMaxRoyaltyBpsUpdated
+        - NFTMarketOwnershipTransferred
+        - NFTMarketPaused
+        - NFTMarketPlatformFeeUpdated
+        - NFTMarketPlatformFeesWithdrawn
+        - NFTMarketUnpaused
+        - NFTMarketUntrackedEthWithdrawn
+      abis:
+        - name: NFTMarketPlace
+          file: ./abis/NFTMarketPlace.json
+      eventHandlers:
+        - event: ItemListed(indexed address,indexed uint256,indexed address,uint256)
+          handler: handleItemListed
+        - event: ItemSold(indexed address,indexed uint256,indexed address,address,uint256,uint256,uint256,uint256)
+          handler: handleItemSold
+        - event: ListingCanceled(indexed address,indexed uint256,indexed address)
+          handler: handleListingCanceled
+        - event: ListingPriceUpdated(indexed address,indexed uint256,indexed address,uint256,uint256)
+          handler: handleListingPriceUpdated
+        - event: MaxRoyaltyBpsUpdated(uint256)
+          handler: handleMaxRoyaltyBpsUpdated
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleMarketOwnershipTransferred
+        - event: Paused(address)
+          handler: handleMarketPaused
+        - event: PlatformFeeUpdated(uint256,uint256)
+          handler: handlePlatformFeeUpdated
+        - event: PlatformFeesWithdrawn(indexed address,uint256)
+          handler: handlePlatformFeesWithdrawn
+        - event: Unpaused(address)
+          handler: handleMarketUnpaused
+        - event: UntrackedEthWithdrawn(indexed address,uint256)
+          handler: handleUntrackedEthWithdrawn
+      file: ./src/nft-marketplace.ts

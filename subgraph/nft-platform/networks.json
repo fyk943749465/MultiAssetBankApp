@@ -3,6 +3,13 @@
     "NFTTemplate": {
       "address": "0xcbBF6cd8D652289A91dc560944108aD962a69599",
       "startBlock": 10683724
+    },
+    "NFTFactory": {
+      "address": "0x32CcF2565f382519d6f8ca2fE12Ba7a5ac1f8C90"
+    },
+    "NFTMarketPlace": {
+      "address": "0x7Bf717D5c1262756e80B99f7eb6C8838ceA5C9F6",
+      "startBlock": 10683734
     }
   }
 }
