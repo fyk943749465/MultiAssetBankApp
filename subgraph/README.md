@@ -1,150 +1,90 @@
-# MultiAssetBank · The Graph 子图说明
+# subgraph 目录说明
 
-本目录用于存放 **The Graph（子图 / Subgraph）** 相关说明与后续子图工程。合约参考：
+本目录存放 **The Graph** 子图工程（与链上合约事件一一对应的索引与 GraphQL 查询层）。  
+仓库整体是 **Go 后端 + React 前端 + 子图** 的 monorepo；**业务入账与对账以 PostgreSQL 为准**、子图侧重 **列表与读体验** 时，见根目录文档：
 
-- [Sepolia 上的 MultiAssetBank（Etherscan）](https://sepolia.etherscan.io/address/0x668a7a8372c41ee0be46a4ea34e6eafeaa4e9748#code)
-
-仓库内对应的最小 ABI 见：`frontend/src/abi/multiAssetBank.ts`（含 `Deposited` / `Withdrawn` 事件）。
-
----
-
-## 1. The Graph 在做什么
-
-- **Subgraph**：配置「监听哪些合约、哪些事件、如何写成可查询的数据」；**索引器**扫链，通过 **GraphQL** 对外查询。
-- **与当前仓库的关系**：`backend` 已有 **Go + PostgreSQL** 索引账本；The Graph 是另一套索引与查询方式。两者可并存：前端可继续调 `/api`，也可增加 GraphQL 查询。
+- [`docs/NFT-Platform-Architecture-PG-Subgraph.md`](../docs/NFT-Platform-Architecture-PG-Subgraph.md)（NFT 平台：PG / 扫块 / 子图分工）
+- [`docs/api-data-source-rules.md`](../docs/api-data-source-rules.md)（API 数据来源约定）
 
 ---
 
-## 2. 部署子图前准备
+## 1. 仓库里三件套的当前形态（摘要）
 
-1. **合约地址**：`0x668A7A8372C41EE0be46a4eA34e6eafeaA4E9748`（Sepolia）。
-2. **完整 ABI**：在 Etherscan **Contract → Code** 复制 **Contract ABI**（JSON）。子图建议使用**完整 ABI**，避免漏事件；本地最小 ABI 仅够前端调用。
-3. **部署区块 `startBlock`**：在 Etherscan 查看合约 **创建区块**（或首次出现合约的区块）。`subgraph.yaml` 中填写该值，可明显加快同步（不要从 0 开始）。
-4. **稳定的 Sepolia RPC**：Studio 或自建 Graph Node 都需要稳定 JSON-RPC（如 Infura、Alchemy 等）。
+### 1.1 后端 `backend/`
+
+- **语言与框架**：Go 1.26，HTTP 服务使用 **Gin**；ORM 为 **GORM**，数据库为 **PostgreSQL**。
+- **链交互**：**go-ethereum**（`ethclient`、合约调用、日志过滤等）。
+- **能力概览**（详见 [`backend/README.md`](../backend/README.md)）：
+  - 健康检查、链状态、示例 Counter 读写；
+  - **MultiAssetBank**：RPC 扫块将 `Deposited` / `Withdrawn` 等写入 PG，并提供 REST 查询；可选对接 **The Graph**（`SUBGRAPH_URL` 等环境变量）；
+  - **Code Pulse 众筹**：默认以 **RPC 扫块** 写入 `cp_*` 表为权威读模型；可选子图 URL（`SUBGRAPH_CODE_PULSE_URL`）与可选「子图同步入库」开关。
+- **文档**：Swagger / ReDoc / Scalar 等由 `swag` 生成，本地起服务后见 `backend/README.md` 中的路径表。
+
+### 1.2 前端 `frontend/`
+
+- **栈**：**React 19**、**Vite 6**、**TypeScript**；样式与组件侧使用 **Tailwind CSS v4**、**@base-ui/react** 等（与 `package.json` 一致）。
+- **链上读写**：**wagmi v2** + **viem**（钱包连接、读合约、发交易）。
+- **路由与业务模块**：`react-router-dom`；当前可见模块包含 **银行（Bank）**、**众筹（Crowdfunding）** 等页面树（具体路由见 `frontend/src/App.tsx`）。
+- **ABI**：部分合约的最小 ABI 放在 `frontend/src/abi/` 等处，供前端直接调用；与子图 ABI 应对齐同一套部署。
+
+### 1.3 子图 `subgraph/`（本目录）
+
+| 子目录 | 用途 |
+|--------|------|
+| **`nft-platform/`** | **NFT 工厂 + 模板实现 + 市场**（Sepolia 上三份固定地址合约），事件写入 `schema.graphql` 中定义的实体；适合列表、详情、市场流水等 GraphQL 查询。 |
+| **`multi-asset-bank-sepolia/`** | **MultiAssetBank**（Sepolia）存取款事件子图；与后端 `SUBGRAPH_URL`、银行相关 API 配套。 |
+| **`code-pulse-advanced/`** | **Code Pulse 众筹**合约子图；与后端 `SUBGRAPH_CODE_PULSE_URL`、众筹模块配套。 |
+
+根目录 [`.gitignore`](../.gitignore) 已对子图常见产物做了兜底（如部分路径下的 `node_modules/`、`build/`、`generated/`）；各子项目内另有 `.gitignore`，以子目录为准。
 
 ---
 
-## 3. 推荐路径：Subgraph Studio
+## 2. NFT 子图：`nft-platform/`
 
-### 3.1 创建子图
-
-1. 打开 [Subgraph Studio](https://thegraph.com/studio/)，使用钱包登录。
-2. **Create a Subgraph**，命名（例如 `multi-asset-bank-sepolia`），记下 **subgraph slug**（形如 `account/subgraph-name`）。
-3. 在子图详情页复制 **Deploy Key**（勿提交到公开仓库）。
-
-### 3.2 安装 CLI 并登录
+- **网络**：`sepolia`（`subgraph.yaml` / `networks.json`）。
+- **三个数据源（固定地址）**：
+  1. **NFTTemplate** — 模板/实现合约，索引 ERC721 相关事件与模板级配置事件；
+  2. **NFTFactory** — 工厂（合集创建、费用、暂停、提现等）；
+  3. **NFTMarketPlace** — 市场（挂单、改价、取消、成交、平台费与所有权等）；市场侧实体在 schema 中使用 **`NFTMarket*`** 前缀，避免与工厂等同名事件在查询语义上混淆。
+- **常用命令**（在 `nft-platform` 目录下）：
 
 ```bash
-npm install -g @graphprotocol/graph-cli
-graph auth --studio <你的_DEPLOY_KEY>
+npm install
+npm run codegen   # 根据 subgraph.yaml + schema 生成 AssemblyScript 类型
+npm run build     # 编译为 WASM，检查映射是否通过
+# 部署：在 Subgraph Studio 或自建 Graph Node 上按官方流程 graph deploy（需本机 graph-cli 与密钥/端点）
 ```
 
-官方文档以最新为准：[Deploying using Subgraph Studio](https://thegraph.com/docs/en/subgraphs/developing/deploying/using-subgraph-studio/)。
-
-### 3.3 初始化子图工程
-
-在本目录或新目录执行 `graph init`（交互式），选择：
-
-- **Product**：Subgraph Studio  
-- **Network**：Ethereum **Sepolia**（manifest 中网络标识多为 `sepolia`，以 CLI 提示为准）  
-- **Contract**：`0x668A7A8372C41EE0be46a4eA34e6eafeaA4E9748`  
-- 导入 Etherscan 导出的 ABI  
-
-也可使用 `graph init` 的非交互参数，以本机 `graph init --help` 为准。
-
-典型生成结构：
-
-| 文件 | 作用 |
-|------|------|
-| `subgraph.yaml` | 网络、合约地址、事件、`startBlock`、映射入口 |
-| `schema.graphql` | 实体（GraphQL 可查询的「表」） |
-| `src/mapping.ts` | 事件处理（AssemblyScript） |
-
-### 3.4 `subgraph.yaml` 要点
-
-在 `dataSources` 中监听与 ABI 一致的事件：
-
-- `Deposited(indexed address token, indexed address user, uint256 amount)`
-- `Withdrawn(indexed address token, indexed address user, uint256 amount)`
-
-将 `startBlock` 设为合约部署块。
-
-### 3.5 `schema.graphql` 设计思路
-
-按需定义实体，例如：
-
-- **`Deposit`** / **`Withdraw`**：字段含 user、token、amount、blockNumber、timestamp、txHash 等；  
-- 或使用统一 **`LedgerEntry`**，增加 `type` 区分存/取。
-
-**实体 id 必须全局唯一**，常用：`${transaction.hash}-${logIndex}`。
-
-### 3.6 `mapping.ts` 要点
-
-为 `Deposited`、`Withdrawn` 各写一个 handler：
-
-- 从 `event.params` 读取 `token`、`user`、`amount`  
-- 使用 `event.block.number`、`event.block.timestamp`、`event.transaction.hash`  
-- 调用 `entity.save()`  
-
-若需将 ETH 与 ERC20 统一标识，可与链上 `ETH_ADDRESS()` 比较（需在 ABI 中包含该函数，并在 mapping 中通过合约模板调用），或仅在子图中存原始 token 地址，由前端解析。
-
-### 3.7 构建与部署
-
-```bash
-cd <子图项目根目录>
-graph codegen
-graph build
-graph deploy --studio <subgraph-slug>
-```
-
-在 Studio 的 Playground 中用 GraphQL 验证查询。
-
-### 3.8 前端调用
-
-使用 `fetch`、`graphql-request` 等向 Studio 提供的 **GraphQL HTTPS 端点** 发送查询。注意浏览器 **CORS** 与 Studio 对密钥的要求；生产环境常见做法是由后端转发 GraphQL，以官方说明为准。
+- **合约 ABI**：位于 `nft-platform/abis/*.json`；**`startBlock`** 已在 manifest 中按部署块填写，用于加快同步。
 
 ---
 
-## 4. 发布到去中心化网络（可选）
+## 3. 银行子图：`multi-asset-bank-sepolia/`
 
-在 Studio 验证通过后，可按文档将子图 **Publish** 到 The Graph Network（涉及 GRT、版本与策展等）。测试阶段可仅在 Studio 使用。
-
-文档：[Publishing a subgraph](https://thegraph.com/docs/en/subgraphs/developing/publishing/publishing-a-subgraph/)
-
----
-
-## 5. 自建 Graph Node（可选）
-
-若托管方案不满足需求，可用 Docker 运行 [graph-node](https://github.com/graphprotocol/graph-node)，并连接自有 Sepolia RPC。运维成本更高，但链与部署方式更可控。
+- 监听 **MultiAssetBank** 的 **`Deposited`** / **`Withdrawn`** 等事件（以该目录下 `subgraph.yaml` 为准）。
+- 与前端 `multiAssetBank` 相关 ABI、后端银行子图查询路径一致即可；部署与调试步骤与下文「通用流程」相同。
 
 ---
 
-## 6. 与仓库内 ABI 的对应关系
+## 4. Code Pulse 子图：`code-pulse-advanced/`
 
-前端 `multiAssetBankAbi` 中的事件（与链上验证合约应对齐）：
-
-- **`Deposited`**：`token`（indexed）、`user`（indexed）、`amount`  
-- **`Withdrawn`**：同上  
-
-子图中为上述两个事件各配置 `eventHandlers` 即可。
+- 与仓库内 **Code Pulse 众筹**合约验证版本对应；事件与实体以该子图内 `schema.graphql`、`subgraph.yaml` 为准。
+- 后端是否只读子图、是否同步进 PG，由 `CODE_PULSE_SUBGRAPH_SYNC` 等环境变量控制（见 `backend/README.md`）。
 
 ---
 
-## 7. 实操检查清单
+## 5. 通用：初始化、构建与部署要点
 
-| 步骤 | 内容 |
-|------|------|
-| 1 | Etherscan 复制完整 ABI + 合约创建区块号 |
-| 2 | Studio 创建子图并复制 Deploy Key |
-| 3 | 安装 `graph-cli` 并执行 `graph auth --studio` |
-| 4 | `graph init` 生成工程（Sepolia + 合约地址 + ABI） |
-| 5 | 编辑 `schema.graphql`、`mapping.ts`，设置 `startBlock` |
-| 6 | `graph codegen` → `graph build` → `graph deploy --studio` |
-| 7 | Studio Playground 验证后接入前端或后端 |
+1. **安装 CLI**：`npm install -g @graphprotocol/graph-cli`（版本以各子项目 `package.json` 中 `@graphprotocol/graph-cli` 对齐为宜）。
+2. **Studio 部署**：在 [Subgraph Studio](https://thegraph.com/studio/) 创建子图 → `graph auth --studio <DEPLOY_KEY>` → 在子项目根目录 `graph deploy --studio <slug>`（具体参数以官方文档为准）。
+3. **`startBlock`**：务必设为合约（或该数据源）**首次产生需索引日志的区块**，避免从 0 扫链。
+4. **密钥**：Deploy Key、API Key 等仅放在环境变量或本地未提交配置中，勿写入仓库。
+
+更细的「从零 init 到 Playground 验证」 checklist，仍可参考本文件历史版本中针对 **MultiAssetBank** 的逐步说明；当前仓库已包含可直接 `codegen` / `build` 的上述三个子项目，优先直接打开对应子目录的 `subgraph.yaml` 阅读。
 
 ---
 
-## 8. 后续在本仓库中的建议
+## 6. 相关链接（外部）
 
-- 使用 `graph init` 在本目录生成正式子图代码时，请将 **Deploy Key** 放在环境变量或本地未提交的配置中。  
-- 在根目录 `.gitignore` 中忽略子图目录下的 `node_modules/`、`build/` 等（若尚未忽略）。
+- [The Graph 文档](https://thegraph.com/docs/en/subgraphs/developing/introduction/)
+- [Subgraph Studio](https://thegraph.com/studio/)
