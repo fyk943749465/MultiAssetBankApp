@@ -13,7 +13,7 @@
 2. 已安装 **Irys CLI**，且终端中能执行 `irys`（安装方式以 [Irys 官方文档](https://docs.irys.xyz) 为准）。
 3. 准备目录 **`images/`**：内含 `1.png`、`2.png`、…、`N.png`（与下面 `TOTAL_COUNT` 一致）。首图 **`1.png`** 会作为目录索引的入口（`--index-file 1.png`）。
 
-建议在 **`script/` 目录下** 放置 `images/`、`metadata/`，与下文命令一致；也可自行改路径。
+建议在 **`script/` 目录下** 放置 `images/`、`metadata/`，与下文命令一致；也可自行改路径。若本地素材在 **`pic/`** 下且命名已是 `1.png`…，可复制到 `images/`：`cp -r pic images`（Windows 可用资源管理器复制后把文件夹改名为 `images`）。
 
 ---
 
