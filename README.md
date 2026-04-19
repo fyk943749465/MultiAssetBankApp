@@ -45,6 +45,8 @@
 
 在对应子目录内通常执行：`npm install` → `npm run codegen` → `npm run build`；部署到 Studio 或自建 Graph Node 的步骤见 [`subgraph/README.md`](subgraph/README.md)。
 
+**NFT 图片与链下元数据**（Irys → Arweave）由子图之外的脚本完成，见 [`script/README.md`](script/README.md)；与子图分工说明见 [`subgraph/README.md`](subgraph/README.md) 第 3 节。
+
 ---
 
 ## 仓库结构（节选）
@@ -54,6 +56,7 @@ go-chain/
 ├── backend/          # Go API、扫块索引、Swagger
 ├── frontend/         # React + Vite 前端
 ├── subgraph/         # 多个子图工程（nft-platform、银行等）
+├── script/           # NFT 图片/元数据上传 Irys Devnet（见 script/README.md）
 ├── docs/             # 架构与约定说明
 ├── go.work           # Go workspace（当前包含 backend 模块）
 └── README.md         # 本文件
@@ -66,3 +69,4 @@ go-chain/
 - [`docs/NFT-Platform-Architecture-PG-Subgraph.md`](docs/NFT-Platform-Architecture-PG-Subgraph.md) — NFT：PostgreSQL 权威、扫块与子图分工  
 - [`docs/api-data-source-rules.md`](docs/api-data-source-rules.md) — API 数据来源约定  
 - [`subgraph/README.md`](subgraph/README.md) — 子图目录与各子工程说明  
+- [`script/README.md`](script/README.md) — NFT 资源上链（Irys）三步脚本  

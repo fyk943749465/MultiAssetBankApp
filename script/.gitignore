@@ -1,0 +1,4 @@
+# 本地私钥与生成物勿提交
+.env
+images/
+metadata/

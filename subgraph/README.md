@@ -59,21 +59,35 @@ npm run build     # 编译为 WASM，检查映射是否通过
 
 ---
 
-## 3. 银行子图：`multi-asset-bank-sepolia/`
+## 3. NFT 图片与元数据上链（Irys Devnet）
+
+子图只索引**链上事件**（如 `BaseURIUpdated`、`Transfer`），**不会**上传 PNG 或 JSON。若要把 **图片 + ERC721 元数据** 存到 **Arweave（经 Irys）** 再在合约里设 `baseURI`，可在仓库 **[`script/`](../script/)** 目录按三步完成：
+
+| 步骤 | 说明 |
+|------|------|
+| **1. 上传图片** | `irys upload-dir ./images`，Devnet 节点 `https://devnet.irys.xyz`，`-t ethereum`，`--index-file 1.png`；得到 **图片 Manifest ID**。 |
+| **2. 生成元数据** | `node generate-nft-metadata.js`（设置 `IMG_MANIFEST_ID`、`TOTAL_COUNT` 等），在 `metadata/` 写出无后缀的 `1`、`2`、… JSON 文件。 |
+| **3. 上传元数据** | `irys upload-dir ./metadata`，同样 Devnet + ethereum；得到 **元数据 Manifest ID**，用于 `https://arweave.net/<id>/` 形式的 `baseURI`。 |
+
+**详细命令、环境变量与注意事项**（含与 `subgraph/` 的分工）见 **[`script/README.md`](../script/README.md)**。仓库内封装脚本：`upload-images.sh`、`generate-nft-metadata.js`、`upload-metadata.sh`。
+
+---
+
+## 4. 银行子图：`multi-asset-bank-sepolia/`
 
 - 监听 **MultiAssetBank** 的 **`Deposited`** / **`Withdrawn`** 等事件（以该目录下 `subgraph.yaml` 为准）。
 - 与前端 `multiAssetBank` 相关 ABI、后端银行子图查询路径一致即可；部署与调试步骤与下文「通用流程」相同。
 
 ---
 
-## 4. Code Pulse 子图：`code-pulse-advanced/`
+## 5. Code Pulse 子图：`code-pulse-advanced/`
 
 - 与仓库内 **Code Pulse 众筹**合约验证版本对应；事件与实体以该子图内 `schema.graphql`、`subgraph.yaml` 为准。
 - 后端是否只读子图、是否同步进 PG，由 `CODE_PULSE_SUBGRAPH_SYNC` 等环境变量控制（见 `backend/README.md`）。
 
 ---
 
-## 5. 通用：初始化、构建与部署要点
+## 6. 通用：初始化、构建与部署要点
 
 1. **安装 CLI**：`npm install -g @graphprotocol/graph-cli`（版本以各子项目 `package.json` 中 `@graphprotocol/graph-cli` 对齐为宜）。
 2. **Studio 部署**：在 [Subgraph Studio](https://thegraph.com/studio/) 创建子图 → `graph auth --studio <DEPLOY_KEY>` → 在子项目根目录 `graph deploy --studio <slug>`（具体参数以官方文档为准）。
@@ -84,7 +98,7 @@ npm run build     # 编译为 WASM，检查映射是否通过
 
 ---
 
-## 6. 相关链接（外部）
+## 7. 相关链接（外部）
 
 - [The Graph 文档](https://thegraph.com/docs/en/subgraphs/developing/introduction/)
 - [Subgraph Studio](https://thegraph.com/studio/)
