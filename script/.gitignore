@@ -2,3 +2,5 @@
 .env
 images/
 metadata/
+# 本地素材目录（若命名为 pic/，上传前可复制到 images/）
+pic/
