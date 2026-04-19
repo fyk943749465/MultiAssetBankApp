@@ -24,7 +24,7 @@ irys upload-dir .\images -h https://devnet.irys.xyz -t ethereum -w $env:WALLET_P
 
 `images` 不在 `script` 下时，把 `cd` 改成你的路径，或把 `.\images` 改成绝对路径，例如 `E:\my-nft\images`。
 
-上传成功后，终端会打印 **Manifest / 根交易 ID**（以 CLI 输出为准），记下来用于元数据里的 `https://arweave.net/<id>/1.png` 等。
+上传成功后，终端会打印 **Manifest / 根地址**（以 CLI 输出为准，常见为 `Uploaded to https://gateway.irys.xyz/<id>`），记下来用于元数据里的 `image` 等字段。
 
 ### 已上传图片包根地址（备忘）
 
@@ -55,3 +55,49 @@ node generate-nft-metadata.js JOk1n1ztQJHAoLL-57jxRt7cASQ_cX0PbmbgnbHiuU8 200 "M
 ```powershell
 irys upload-dir .\metadata -h https://devnet.irys.xyz -t ethereum -w "0x你的以太坊私钥"
 ```
+
+成功后终端会类似：`Uploaded to https://gateway.irys.xyz/<元数据根ID>`。请把 **整段根 URL**（或至少 `<元数据根ID>`）保存好，下面验证与合约 `baseURI` 都要用到。
+
+---
+
+## 上传 metadata 后如何验证
+
+以下把 **元数据根 URL** 记作 `https://gateway.irys.xyz/<ROOT>`（把 `<ROOT>` 换成你实际上传后得到的那一串，例如 `qyVYPmmDTTTeU1J4Gr6lb_txU4paM2XoRX6jxwYbUHU`）。
+
+### 1. 浏览器
+
+1. 打开 **`https://gateway.irys.xyz/<ROOT>`**  
+   应看到 **JSON manifest**（含 `paths` 等），说明根资源已在网关上可访问。
+2. 打开单份元数据（与本地无后缀文件名 `1`、`200` 对应）：  
+   - `https://gateway.irys.xyz/<ROOT>/1`  
+   - `https://gateway.irys.xyz/<ROOT>/200`  
+   应返回 **HTTP 200**，正文为带 `name`、`description`、`image`、`attributes` 的 JSON。  
+3. 在 JSON 里点开 **`image`** 的链接，应能打开对应 PNG。
+
+若 **`/<ROOT>/1` 打不开**：回到第 1 步 manifest 里找到 `"paths"` → `"1"` → **`id`**，再试 **`https://gateway.irys.xyz/<该id>`**（部分网关对「目录路径」与「直接交易 id」解析不一致）。
+
+### 2. PowerShell + curl（看状态码与正文）
+
+只看 **1** 号元数据是否 **200**：
+
+```powershell
+curl.exe -sS -o NUL -w "%{http_code}" "https://gateway.irys.xyz/<ROOT>/1"
+```
+
+期望输出 **`200`**。查看 JSON 正文：
+
+```powershell
+curl.exe -sS "https://gateway.irys.xyz/<ROOT>/1"
+```
+
+### 3. 与合约 `baseURI` / `tokenURI` 对齐（上链后）
+
+若合约里 **`baseURI`** 设为（注意是否带**末尾斜杠**，需与合约实现一致）：
+
+`https://gateway.irys.xyz/<ROOT>/`
+
+则在区块浏览器 **Read Contract** 里调用 **`tokenURI(1)`**，把返回的 URL 复制到浏览器打开，应能打开与上面 **`/1`** 相同的 JSON。
+
+### 4. 说明
+
+个别环境或自动请求工具可能对网关返回 **500**，以你本机 **浏览器直接访问** 为准；若长期异常，可对照 manifest 中的 **`paths`** 与官方 [Irys 文档](https://docs.irys.xyz) 排查。
