@@ -101,3 +101,18 @@ curl.exe -sS "https://gateway.irys.xyz/<ROOT>/1"
 ### 4. 说明
 
 个别环境或自动请求工具可能对网关返回 **500**，以你本机 **浏览器直接访问** 为准；若长期异常，可对照 manifest 中的 **`paths`** 与官方 [Irys 文档](https://docs.irys.xyz) 排查。
+
+### 5. MetaMask 提示「This website might be harmful」怎么办？
+
+这是 **MetaMask 扩展**（结合 SEAL、ChainPatrol 等名单）对当前标签页 URL 做的 **钓鱼风险提示**，**不等于** Irys 官方网关一定在作恶；名单里常有 **误报**，尤其是带「连接钱包」联想的新域名或网关类地址。
+
+**你只是只读打开 JSON / 图片时**，可以任选其一，避免被扩展拦在门外：
+
+1. **用没有装 MetaMask 的浏览器**（如系统自带的 Edge、Firefox 单独配置）打开 `https://gateway.irys.xyz/...`。  
+2. **Chrome 无痕窗口**里若仍装扩展，可先关掉 MetaMask 再访问，或用 **不带扩展的配置/另一用户配置**。  
+3. **只用 PowerShell `curl.exe`** 拉 JSON（见上文 §2），不经过 MetaMask。  
+4. 打开根地址 **`https://gateway.irys.xyz/<ROOT>`** 的 manifest，用 **`paths` → `"1"` → `id`** 拼 **`https://arweave.net/<id>`**（或官方文档推荐的其它 Arweave 网关）访问**同一份**上链数据，有时不会被同一规则拦截。
+
+若你确认是**自己上传的合法资源**、希望 MetaMask 以后少误拦，可在拦截页点击 **「report a detection problem」** 向名单方反馈误报；**「Proceed anyway」** 仅在你**确认 URL 来源**（例如来自你自己终端 `Uploaded to` 输出）时使用，不要对陌生链接乱点。
+
+**上链后**：钱包读 `tokenURI` 时也可能遇到同类拦截，处理方式相同；合约里用 `https://arweave.net/<txId>/` 形式的 `baseURI` 有时能避开对 `gateway.irys.xyz` 的名单（需在部署前与元数据实际所在网关一致，并自行测通）。
