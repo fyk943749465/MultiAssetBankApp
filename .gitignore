@@ -19,3 +19,10 @@ docs/build_donation_notice_docx.py
 docs/大庙捐款支持公示-预览.png
 docs/大庙捐款支持公示.docx
 docs/大庙捐款支持公示.md
+
+# 本地截图与 Irys 上传清单（不入库）
+docs/201.png
+script/*manifest*.json
+script/*manifest*.csv
+script/images-id.txt
+script/metadata-id.txt

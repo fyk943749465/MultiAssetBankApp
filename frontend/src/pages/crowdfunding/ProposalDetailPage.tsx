@@ -276,7 +276,7 @@ export function ProposalDetailPage() {
           <div className="space-y-6">
             {adminStepWaiting ? (
               <Callout
-                tone="info"
+                tone="neutral"
                 title="当前步骤：需要管理员"
                 description="此阶段需合约 owner 在链上操作。若你正是管理员，请确认后端 `/api/code-pulse/config` 能返回正确的 `owner_address`（与当前钱包一致）后刷新页面。"
               />
@@ -295,7 +295,7 @@ export function ProposalDetailPage() {
             ) : null}
             {organizerKeys.length === 0 && adminKeys.length === 0 && !adminStepWaiting ? (
               <Callout
-                tone="info"
+                tone="neutral"
                 title="当前无需你执行提案动作"
                 description="你已连接的钱包既不是本提案发起人，也不是当前步骤所需的管理员；或链上进度尚不需要提案页上的交易。仍可浏览下方里程碑与关联众筹。"
               />
