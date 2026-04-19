@@ -115,4 +115,12 @@ curl.exe -sS "https://gateway.irys.xyz/<ROOT>/1"
 
 若你确认是**自己上传的合法资源**、希望 MetaMask 以后少误拦，可在拦截页点击 **「report a detection problem」** 向名单方反馈误报；**「Proceed anyway」** 仅在你**确认 URL 来源**（例如来自你自己终端 `Uploaded to` 输出）时使用，不要对陌生链接乱点。
 
-**上链后**：钱包读 `tokenURI` 时也可能遇到同类拦截，处理方式相同；合约里用 `https://arweave.net/<txId>/` 形式的 `baseURI` 有时能避开对 `gateway.irys.xyz` 的名单（需在部署前与元数据实际所在网关一致，并自行测通）。
+**上链后**：链上只存 **`tokenURI` 返回的那串字符串**（例如 `https://gateway.irys.xyz/.../1`），**不经过**你在浏览器里手动点链接的那条路径，所以 **NFT 合约、铸造、转移本身不受影响**。
+
+**会不会导致 NFT「没法搞」？** 一般 **不会**：
+
+- **OpenSea、Blur、钱包资产页** 等拉元数据时，多用 **服务端或 App 内 HTTP 请求**，和「Chrome 里装了 MetaMask 后你地址栏打开同一 URL」**不是同一套拦截逻辑**；很多项目长期用 `arweave.net` / Irys gateway，照样能展示。
+- **MetaMask 弹窗**主要针对 **你在本机浏览器里主动访问** 的页面（防钓鱼），**不等于**所有用户、所有场景都拉不到你的 JSON。
+- 若个别环境仍对 **`gateway.irys.xyz`** 拉取失败，可在 **`baseURI` / 元数据里的 `image`** 改用 **同一笔 Arweave 交易 id 的 `https://arweave.net/<id>/...` 形式**（manifest 里 `paths` 的 `id` 即交易 id），数据仍是同一份，名单表现往往不同；改前务必 **curl / 浏览器** 测通再写合约。
+
+结论：**Arweave/Irys 给你 gateway 链接完全可以继续做 NFT**；浏览器里被 MetaMask 拦的是 **本地浏览体验**，用上文 §5 绕过或换 **`arweave.net` 等价 URL** 即可降低顾虑。
