@@ -28,4 +28,19 @@ irys upload-dir .\images -h https://devnet.irys.xyz -t ethereum -w $env:WALLET_P
 
 ---
 
-可选：仓库里的 `generate-nft-metadata.js`、`upload-metadata.sh` 仍可用于批量生成 JSON 与上传 `metadata`；需要时再自行使用。
+## 批量生成 metadata（一条命令）
+
+在 **`script`** 目录下执行（把 `你的图片ManifestID` 换成上传 `images` 后 CLI 打印的 ID；数字与名称按你实际情况改）：
+
+```powershell
+cd E:\project\go-chain\script
+node generate-nft-metadata.js 你的图片ManifestID 100 "My Pixel Monster" "This is a cool pixel NFT stored on Arweave"
+```
+
+前两个参数必填：**Manifest ID**、**NFT 个数**。后两个可选：合集名、描述（描述里若有空格，整段用英文引号包起来）。生成结果在 **`script\metadata\`** 下，文件名为 `1`、`2`、…（无后缀）。
+
+可选：上传 `metadata` 目录仍可用 Irys，例如：
+
+```powershell
+irys upload-dir .\metadata -h https://devnet.irys.xyz -t ethereum -w "0x你的以太坊私钥"
+```

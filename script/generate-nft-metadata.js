@@ -1,36 +1,38 @@
 /**
- * 根据 Irys 上传图片后得到的 Manifest ID，批量生成 ERC721 常用的链下 metadata 文件。
- * 在 script/ 目录执行: node generate-nft-metadata.js
+ * 批量生成 ERC721 链下 metadata 文件（无 .json 后缀），输出到本脚本同目录下的 metadata/。
  *
- * 环境变量:
- *   IMG_MANIFEST_ID  (必填)  步骤一 irys 上传 images 后得到的 Manifest ID
- *   TOTAL_COUNT        (可选)  默认 100
- *   COLLECTION_NAME    (可选)  默认 My Pixel Monster
- *   METADATA_DESCRIPTION (可选) 默认描述文案
- *   METADATA_DIR       (可选)  输出目录，默认 ./metadata
+ * 用法（在 script 目录执行一条即可）:
+ *   node generate-nft-metadata.js <图片ManifestID> <NFT总数> [合集名称] [描述]
+ *
+ * 示例:
+ *   node generate-nft-metadata.js abcdef1234567890 100 "My Pixel Monster" "cool pixel NFT"
  */
 const fs = require("fs");
 const path = require("path");
 
-const IMG_MANIFEST_ID = process.env.IMG_MANIFEST_ID || "";
-const TOTAL_COUNT = parseInt(process.env.TOTAL_COUNT || "100", 10);
-const COLLECTION_NAME = process.env.COLLECTION_NAME || "My Pixel Monster";
-const METADATA_DESCRIPTION =
-  process.env.METADATA_DESCRIPTION ||
-  "This is a cool pixel NFT stored on Arweave";
-const METADATA_DIR = process.env.METADATA_DIR || path.join(__dirname, "metadata");
+const [, , manifestId, totalStr, collectionNameArg, ...descriptionParts] =
+  process.argv;
 
-if (!IMG_MANIFEST_ID) {
+if (!manifestId || !totalStr) {
   console.error(
-    "错误: 请设置环境变量 IMG_MANIFEST_ID（上传 images 后得到的 Manifest ID）。",
+    "用法: node generate-nft-metadata.js <图片ManifestID> <NFT总数> [合集名称] [描述]",
   );
   process.exit(1);
 }
 
+const TOTAL_COUNT = parseInt(totalStr, 10);
+const COLLECTION_NAME = collectionNameArg || "My Pixel Monster";
+const METADATA_DESCRIPTION =
+  descriptionParts.length > 0
+    ? descriptionParts.join(" ")
+    : "This is a cool pixel NFT stored on Arweave";
+
 if (!Number.isFinite(TOTAL_COUNT) || TOTAL_COUNT < 1) {
-  console.error("错误: TOTAL_COUNT 须为正整数。");
+  console.error("错误: <NFT总数> 须为正整数。");
   process.exit(1);
 }
+
+const METADATA_DIR = path.join(__dirname, "metadata");
 
 if (!fs.existsSync(METADATA_DIR)) {
   fs.mkdirSync(METADATA_DIR, { recursive: true });
@@ -40,7 +42,7 @@ for (let i = 1; i <= TOTAL_COUNT; i++) {
   const json = {
     name: `${COLLECTION_NAME} #${i}`,
     description: METADATA_DESCRIPTION,
-    image: `https://arweave.net/${IMG_MANIFEST_ID}/${i}.png`,
+    image: `https://arweave.net/${manifestId}/${i}.png`,
     attributes: [
       { trait_type: "Format", value: "Pixel Art" },
       { trait_type: "Size", value: "36x36" },
