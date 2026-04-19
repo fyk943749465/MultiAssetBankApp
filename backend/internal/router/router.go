@@ -6,6 +6,7 @@ import (
 	hchain "go-chain/backend/internal/handlers/chain"
 	hcp "go-chain/backend/internal/handlers/codepulse"
 	hctr "go-chain/backend/internal/handlers/contract"
+	hnft "go-chain/backend/internal/handlers/nft"
 	hsys "go-chain/backend/internal/handlers/system"
 
 	"github.com/gin-gonic/gin"
@@ -48,6 +49,7 @@ func New(h *handlers.Handlers) *gin.Engine {
 	r.GET("/api/bank/subgraph/withdrawals", hbank.SubgraphWithdrawals(h))
 
 	hcp.Register(r, h)
+	hnft.Register(r, h)
 
 	return r
 }

@@ -39,6 +39,9 @@ type Config struct {
 	// CodePulseInitiatorReconcileSeconds 将 cp_wallet_roles 中全局 proposal_initiator 与链上白名单定时对齐（秒）；0 表示关闭。
 	// 子图可用时按子图事件折叠结果写库；子图失败时用合约 isProposalInitiator 刷新库中已出现过的地址。
 	CodePulseInitiatorReconcileSeconds int
+	SubgraphNftURL          string // optional: NFT platform subgraph (The Graph)
+	NftSubgraphPollSeconds int    // optional: indexer poll interval, default 35
+	NftSubgraphStartBlock  uint64 // optional: first blockNumber_gt cursor = start-1
 }
 
 func Load() (*Config, error) {
@@ -98,6 +101,14 @@ func Load() (*Config, error) {
 		}
 	}
 
+	nftSubPoll := 35
+	if v := strings.TrimSpace(os.Getenv("NFT_SUBGRAPH_POLL_SECONDS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 5 {
+			nftSubPoll = n
+		}
+	}
+	nftSubStart, _ := strconv.ParseUint(strings.TrimSpace(os.Getenv("NFT_SUBGRAPH_START_BLOCK")), 10, 64)
+
 	return &Config{
 		ServerAddr:                   getEnv("SERVER_ADDR", ":8080"),
 		DatabaseURL:                  os.Getenv("DATABASE_URL"),
@@ -121,6 +132,9 @@ func Load() (*Config, error) {
 		IndexerMaxBlockSpan:          idxSpan,
 		CodePulseServerTx:                   cpServerTx,
 		CodePulseInitiatorReconcileSeconds: cpInitRec,
+		SubgraphNftURL:                     strings.TrimSpace(os.Getenv("SUBGRAPH_NFT_URL")),
+		NftSubgraphPollSeconds:             nftSubPoll,
+		NftSubgraphStartBlock:              nftSubStart,
 	}, nil
 }
 

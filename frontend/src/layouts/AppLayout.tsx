@@ -17,6 +17,7 @@ export function AppLayout() {
   const { pathname } = useLocation();
   const bankActive = pathname === "/bank";
   const crowdfundingActive = pathname.startsWith("/crowdfunding");
+  const nftActive = pathname.startsWith("/nft");
 
   return (
     <div className="relative flex min-h-screen flex-col selection:bg-primary/20">
@@ -60,6 +61,14 @@ export function AppLayout() {
               onClick={() => navigate("/crowdfunding")}
             >
               众筹合约
+            </button>
+            <button
+              type="button"
+              className={navClass({ isActive: nftActive })}
+              aria-current={nftActive ? "page" : undefined}
+              onClick={() => navigate("/nft")}
+            >
+              NFT
             </button>
           </nav>
         </div>

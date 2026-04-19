@@ -9,6 +9,11 @@ import { CrowdfundingHomePage } from "./pages/crowdfunding/CrowdfundingHomePage"
 import { CrowdfundingNewProposalPage } from "./pages/crowdfunding/CrowdfundingNewProposalPage";
 import { CrowdfundingWorkspacePage } from "./pages/crowdfunding/CrowdfundingWorkspacePage";
 import { ProposalDetailPage } from "./pages/crowdfunding/ProposalDetailPage";
+import { NftPage } from "./pages/nft/NftPage";
+import { NftHomePage } from "./pages/nft/NftHomePage";
+import { NftCollectionDetailPage } from "./pages/nft/NftCollectionDetailPage";
+import { NftCollectionMintPage } from "./pages/nft/NftCollectionMintPage";
+import { NftCreateCollectionPage } from "./pages/nft/NftCreateCollectionPage";
 
 export default function App() {
   return (
@@ -25,6 +30,12 @@ export default function App() {
             <Route path="admin" element={<CrowdfundingAdminPage />} />
             <Route path="proposals/:proposalId" element={<ProposalDetailPage />} />
             <Route path="campaigns/:campaignId" element={<CampaignDetailPage />} />
+          </Route>
+          <Route path="nft" element={<NftPage />}>
+            <Route index element={<NftHomePage />} />
+            <Route path="create" element={<NftCreateCollectionPage />} />
+            <Route path="collections/:contractAddress/mint" element={<NftCollectionMintPage />} />
+            <Route path="collections/:collectionId" element={<NftCollectionDetailPage />} />
           </Route>
         </Route>
       </Routes>

@@ -1,6 +1,6 @@
 // @title           go-chain API
 // @version         0.1.0
-// @description     REST API: health, chain status, counter contract calls, bank ledger (PostgreSQL indexer + optional The Graph subgraph). Code Pulse: PostgreSQL is filled by RPC log indexer by default; subgraph sync to DB is optional.
+// @description     REST API: health, chain status, counter contract calls, bank ledger (PostgreSQL indexer + optional The Graph subgraph). Code Pulse: PostgreSQL is filled by RPC log indexer by default; subgraph sync to DB is optional. NFT: RPC indexer writes factory/market/collection events to PostgreSQL (005_nft_platform); list endpoints may still prefer The Graph when configured; subgraph is not persisted to PostgreSQL.
 // @BasePath        /
 //go:generate go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -d .,../../internal/handlers,../../internal/handlers/system,../../internal/handlers/chain,../../internal/handlers/bank,../../internal/handlers/contract,../../internal/handlers/codepulse -g main.go -o ../../docs --parseDependency --parseInternal
 
@@ -108,6 +108,12 @@ func main() {
 		log.Printf("subgraph: 已配置 SUBGRAPH_CODE_PULSE_URL（众筹子图 API 可用）")
 	}
 
+	var nftSubClient *subgraph.Client
+	if u := strings.TrimSpace(cfg.SubgraphNftURL); u != "" {
+		nftSubClient = subgraph.New(u, cfg.SubgraphAPIKey, sgClientCfg)
+		log.Printf("subgraph: 已配置 SUBGRAPH_NFT_URL（NFT 列表可优先子图；/api/nft/subgraph/meta；子图本身不入 PG，合集/挂单权威数据来自 RPC 索引器）")
+	}
+
 	var codePulse *contracts.CodePulse
 	if a := strings.TrimSpace(cfg.CodePulseAddress); a != "" {
 		if !common.IsHexAddress(a) {
@@ -134,6 +140,7 @@ func main() {
 		Subgraph:          subClient,
 		CodePulse:         codePulse,
 		SubgraphCodePulse: cpSubClient,
+		SubgraphNft:       nftSubClient,
 		CodePulseServerTx: cfg.CodePulseServerTx,
 	}
 	r := router.New(h)
@@ -214,6 +221,36 @@ func main() {
 		} else {
 			log.Printf("code-pulse initiator reconcile: 未启动（需 SUBGRAPH_CODE_PULSE_URL 或 CODE_PULSE_ADDRESS）")
 		}
+	}
+
+	switch {
+	case db == nil || ethClient == nil:
+		if db == nil {
+			log.Printf("nft platform rpc indexer: 未启动（无数据库）")
+		} else {
+			log.Printf("nft platform rpc indexer: 未启动（ETH_RPC_URL 未配置或无法连接）")
+		}
+	default:
+		cid, errCID := ethClient.ChainID(context.Background())
+		if errCID != nil {
+			log.Printf("nft platform rpc indexer: 未启动（读取 chainId 失败: %v）", errCID)
+			break
+		}
+		nftIx, errNft := indexer.NewNFTPlatformRPC(db, ethClient.Eth(), *cid)
+		if errNft != nil {
+			log.Printf("nft platform rpc indexer: 未启动（%v）", errNft)
+			break
+		}
+		log.Printf("nft platform rpc indexer: 已启动 chain_id=%d（进度见 chain_indexer_cursors.name=nft_platform_rpc_%d；与 Bank 相同，无游标时从已确认头往前约 2000 块起扫；补历史请删该游标行后重启）",
+			*cid, *cid)
+		staggerNft := time.Duration(cfg.IndexerPollSeconds) * time.Second * 3 / 4
+		if staggerNft < 5*time.Second {
+			staggerNft = 5 * time.Second
+		}
+		go func() {
+			time.Sleep(staggerNft)
+			nftIx.Run(context.Background())
+		}()
 	}
 
 	log.Printf("listening on %s", cfg.ServerAddr)
