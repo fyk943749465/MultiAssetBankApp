@@ -59,17 +59,9 @@ npm run build     # 编译为 WASM，检查映射是否通过
 
 ---
 
-## 3. NFT 图片与元数据上链（Irys Devnet）
+## 3. NFT 静态资源（图片）与 Irys Devnet
 
-子图只索引**链上事件**（如 `BaseURIUpdated`、`Transfer`），**不会**上传 PNG 或 JSON。若要把 **图片 + ERC721 元数据** 存到 **Arweave（经 Irys）** 再在合约里设 `baseURI`，可在仓库 **[`script/`](../script/)** 目录按三步完成：
-
-| 步骤 | 说明 |
-|------|------|
-| **1. 上传图片** | `irys upload-dir ./images`，Devnet 节点 `https://devnet.irys.xyz`，`-t ethereum`，`--index-file 1.png`；得到 **图片 Manifest ID**。 |
-| **2. 生成元数据** | `node generate-nft-metadata.js`（设置 `IMG_MANIFEST_ID`、`TOTAL_COUNT` 等），在 `metadata/` 写出无后缀的 `1`、`2`、… JSON 文件。 |
-| **3. 上传元数据** | `irys upload-dir ./metadata`，同样 Devnet + ethereum；得到 **元数据 Manifest ID**，用于 `https://arweave.net/<id>/` 形式的 `baseURI`。 |
-
-**详细命令、环境变量与注意事项**（含与 `subgraph/` 的分工）见 **[`script/README.md`](../script/README.md)**。仓库内封装脚本：`upload-images.sh`、`generate-nft-metadata.js`、`upload-metadata.sh`。
+子图只索引**链上事件**（如 `BaseURIUpdated`、`Transfer`），**不会**上传 PNG 或元数据 JSON。把本地 **`images`** 目录一次性上传到 Devnet（Windows 手工一条命令）见 **[`script/README.md`](../script/README.md)**。元数据生成与上传 `metadata` 为可选，同目录内另有 `generate-nft-metadata.js` 等脚本，需要时自用。
 
 ---
 
