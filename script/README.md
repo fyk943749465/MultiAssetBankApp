@@ -26,6 +26,15 @@ irys upload-dir .\images -h https://devnet.irys.xyz -t ethereum -w $env:WALLET_P
 
 上传成功后，终端会打印 **Manifest / 根交易 ID**（以 CLI 输出为准），记下来用于元数据里的 `https://arweave.net/<id>/1.png` 等。
 
+### 已上传图片包根地址（备忘）
+
+以下为本仓库一次上传 **200 张图** 后终端给出的根地址（Devnet / gateway），遗失时可在此查找：
+
+- **根 URL**：<https://gateway.irys.xyz/JOk1n1ztQJHAoLL-57jxRt7cASQ_cX0PbmbgnbHiuU8>
+- **单张示例**：`https://gateway.irys.xyz/JOk1n1ztQJHAoLL-57jxRt7cASQ_cX0PbmbgnbHiuU8/1.png`
+- **供 `generate-nft-metadata.js` 使用的 Manifest ID**（路径中斜杠后这一段）：`JOk1n1ztQJHAoLL-57jxRt7cASQ_cX0PbmbgnbHiuU8`  
+  若元数据里 `image` 要与网关一致，可把脚本中的 `https://arweave.net/...` 改成 `https://gateway.irys.xyz/...` 前缀后再生成。
+
 ---
 
 ## 批量生成 metadata（一条命令）
