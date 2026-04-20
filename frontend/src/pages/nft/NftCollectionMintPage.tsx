@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   useAccount,
@@ -8,7 +8,7 @@ import {
   useSwitchChain,
   useWriteContract,
 } from "wagmi";
-import { isAddress } from "viem";
+import { getAddress, isAddress } from "viem";
 import type { Address } from "viem";
 import { sepolia } from "wagmi/chains";
 import { nftTemplateAbi } from "@/abi/nftTemplate";
@@ -49,6 +49,8 @@ export function NftCollectionMintPage() {
   const [mintMsg, setMintMsg] = useState<string | null>(null);
   const [lastMintTx, setLastMintTx] = useState<string | null>(null);
 
+  const prevMintWalletRef = useRef<string | undefined>(undefined);
+
   const collectionAddr = contractValid ? (contractParam as Address) : undefined;
   const onSepolia = chainId === sepolia.id;
 
@@ -83,11 +85,34 @@ export function NftCollectionMintPage() {
     void loadCollection();
   }, [loadCollection]);
 
+  /** 切换账户：铸造给若为空或仍为上一连接地址则跟新钱包；手动填的第三方地址保留。 */
   useEffect(() => {
-    if (address) setMintTo(address);
+    if (!address) {
+      return;
+    }
+    const prev = prevMintWalletRef.current;
+    prevMintWalletRef.current = address;
+
+    setMintTo((curr) => {
+      const t = curr.trim();
+      if (!t) return address;
+      if (
+        prev !== undefined &&
+        isAddress(t) &&
+        getAddress(t as Address).toLowerCase() === prev.toLowerCase()
+      ) {
+        return address;
+      }
+      return curr;
+    });
   }, [address]);
 
-  const { data: chainOwner } = useReadContract({
+  const {
+    data: chainOwner,
+    error: chainOwnerReadError,
+    isPending: chainOwnerPending,
+    isFetching: chainOwnerFetching,
+  } = useReadContract({
     address: collectionAddr,
     abi: nftTemplateAbi,
     functionName: "owner",
@@ -111,7 +136,31 @@ export function NftCollectionMintPage() {
   const apiChainId = collection?.chain_id;
   const chainMismatch = apiChainId != null && chainId > 0 && chainId !== apiChainId;
   const isOwner =
-    address && chainOwner ? address.toLowerCase() === (chainOwner as string).toLowerCase() : false;
+    address && chainOwner != null
+      ? address.toLowerCase() === (chainOwner as string).toLowerCase()
+      : false;
+
+  const chainOwnerLoading =
+    onSepolia &&
+    !chainOwnerReadError &&
+    chainOwner === undefined &&
+    (chainOwnerPending || chainOwnerFetching);
+
+  const mintButtonDisabled =
+    busy ||
+    !address ||
+    chainOwnerReadError != null ||
+    chainOwnerLoading ||
+    (chainOwner != null && !isOwner);
+
+  const mintButtonLabel = (() => {
+    if (busy) return "钱包确认中…";
+    if (!address) return "请先连接钱包";
+    if (chainOwnerReadError) return "无法读取链上 owner";
+    if (chainOwnerLoading) return "正在读取链上 owner…";
+    if (chainOwner != null && !isOwner) return "请使用 owner 钱包";
+    return "发起 mint（在钱包中确认）";
+  })();
 
   async function ensureSepolia() {
     if (switchChainAsync && chainId !== sepolia.id) {
@@ -284,6 +333,17 @@ export function NftCollectionMintPage() {
               <span className="text-muted-foreground">{onSepolia ? "读取中…" : "请切换到 Sepolia"}</span>
             )}
           </div>
+          {chainOwnerReadError ? (
+            <Alert variant="destructive">
+              <AlertTitle>读取 owner 失败</AlertTitle>
+              <AlertDescription>
+                {chainOwnerReadError instanceof Error
+                  ? chainOwnerReadError.message
+                  : String(chainOwnerReadError)}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
           {address && chainOwner && !isOwner ? (
             <Alert variant="destructive">
               <AlertTitle>非 owner 钱包</AlertTitle>
@@ -305,6 +365,10 @@ export function NftCollectionMintPage() {
               className="font-mono text-xs"
               spellCheck={false}
             />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              此处为接收 NFT 的地址；能否点击「发起 mint」取决于<strong className="text-foreground/80">当前已连接钱包是否为链上 owner</strong>
+              ，与这里填写的地址无关。
+            </p>
           </div>
 
           {!onSepolia ? (
@@ -312,12 +376,8 @@ export function NftCollectionMintPage() {
               切换到 Sepolia
             </Button>
           ) : (
-            <Button
-              type="button"
-              disabled={busy || !address || !isOwner}
-              onClick={() => void handleMint()}
-            >
-              {busy ? "钱包确认中…" : "在钱包中确认 mint"}
+            <Button type="button" disabled={mintButtonDisabled} onClick={() => void handleMint()}>
+              {mintButtonLabel}
             </Button>
           )}
 

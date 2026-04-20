@@ -201,7 +201,10 @@ export function NftHomePage() {
             下方「合集」「挂单」由 Go 后端 <code className="rounded bg-muted px-1 py-0.5 text-xs">/api/nft/*</code> 提供：已配置子图且本页子图有数据时{" "}
             <strong className="text-foreground/90">优先子图</strong>（通常快于扫块入库）；子图不可用或本页子图无数据时用 PostgreSQL。平台合约表仍读库。
           </CardDescription>
-          <p className="mt-3 text-sm text-primary/90">
+          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-primary/90">
+            <Link to="/nft/me" className="font-medium underline-offset-4 hover:underline">
+              我的 NFT（按地址查库内持有）
+            </Link>
             <Link to="/nft/create" className="font-medium underline-offset-4 hover:underline">
               创作者：一键创建合集（连接钱包即可，无需懂合约）
             </Link>

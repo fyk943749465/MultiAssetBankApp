@@ -110,6 +110,22 @@ export type NftTokensResponse = {
   tokens: NftTokenRow[];
 };
 
+/** GET /api/nft/holdings?owner= — 库内索引的持有人视图 */
+export type NftHoldingRow = NftTokenRow & {
+  collection_contract_address: string;
+  collection_name?: string | null;
+};
+
+export type NftHoldingsResponse = {
+  data_source: NftDataSource;
+  chain_id: number;
+  owner: string;
+  page: number;
+  page_size: number;
+  total: number;
+  holdings: NftHoldingRow[];
+};
+
 /** 库内活跃挂单 */
 export type NftActiveListingDbRow = {
   id: number;
@@ -270,6 +286,15 @@ export function fetchNftCollectionByContractAddress(contractAddress: string) {
 
 export function fetchNftCollectionTokens(collectionId: number | string, query?: NftListQuery) {
   return getJSON<NftTokensResponse>(`/api/nft/collections/${collectionId}/tokens${listQs(query)}`);
+}
+
+/** 按 owner 查询 PostgreSQL 中已索引的持有记录（非链上实时 balanceOf）。 */
+export function fetchNftHoldings(ownerAddress: string, query?: NftListQuery) {
+  const p = new URLSearchParams();
+  p.set("owner", ownerAddress.trim());
+  if (query?.page != null && query.page > 0) p.set("page", String(query.page));
+  if (query?.page_size != null && query.page_size > 0) p.set("page_size", String(query.page_size));
+  return getJSON<NftHoldingsResponse>(`/api/nft/holdings?${p.toString()}`);
 }
 
 export async function fetchNftActiveListings(query?: NftListQuery): Promise<NftListingsResponse> {

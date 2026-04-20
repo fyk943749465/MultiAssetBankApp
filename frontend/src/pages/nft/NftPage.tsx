@@ -58,6 +58,7 @@ function navClass({ isActive }: { isActive: boolean }) {
 export function NftPage() {
   const { pathname } = useLocation();
   const homeActive = pathname === "/nft" || pathname === "/nft/";
+  const meActive = pathname === "/nft/me" || pathname.startsWith("/nft/me/");
   const createActive = pathname === "/nft/create" || pathname.startsWith("/nft/create/");
 
   return (
@@ -74,6 +75,9 @@ export function NftPage() {
         <nav className="mt-8 flex flex-wrap gap-2 rounded-2xl bg-black/20 p-2 ring-1 ring-white/5" aria-label="NFT 子导航">
           <NavButton to="/nft" className={navClass({ isActive: homeActive })} aria-current={homeActive ? "page" : undefined}>
             概览
+          </NavButton>
+          <NavButton to="/nft/me" className={navClass({ isActive: meActive })} aria-current={meActive ? "page" : undefined}>
+            我的 NFT
           </NavButton>
           <NavButton
             to="/nft/create"

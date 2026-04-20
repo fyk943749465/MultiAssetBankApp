@@ -14,6 +14,7 @@ import { NftHomePage } from "./pages/nft/NftHomePage";
 import { NftCollectionDetailPage } from "./pages/nft/NftCollectionDetailPage";
 import { NftCollectionMintPage } from "./pages/nft/NftCollectionMintPage";
 import { NftCreateCollectionPage } from "./pages/nft/NftCreateCollectionPage";
+import { NftMyHoldingsPage } from "./pages/nft/NftMyHoldingsPage";
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
           </Route>
           <Route path="nft" element={<NftPage />}>
             <Route index element={<NftHomePage />} />
+            <Route path="me" element={<NftMyHoldingsPage />} />
             <Route path="create" element={<NftCreateCollectionPage />} />
             <Route path="collections/:contractAddress/mint" element={<NftCollectionMintPage />} />
             <Route path="collections/:collectionId" element={<NftCollectionDetailPage />} />
