@@ -59,6 +59,7 @@ export function NftPage() {
   const { pathname } = useLocation();
   const homeActive = pathname === "/nft" || pathname === "/nft/";
   const meActive = pathname === "/nft/me" || pathname.startsWith("/nft/me/");
+  const marketActive = pathname === "/nft/market" || pathname.startsWith("/nft/market/");
   const createActive = pathname === "/nft/create" || pathname.startsWith("/nft/create/");
 
   return (
@@ -78,6 +79,13 @@ export function NftPage() {
           </NavButton>
           <NavButton to="/nft/me" className={navClass({ isActive: meActive })} aria-current={meActive ? "page" : undefined}>
             我的 NFT
+          </NavButton>
+          <NavButton
+            to="/nft/market"
+            className={navClass({ isActive: marketActive })}
+            aria-current={marketActive ? "page" : undefined}
+          >
+            市场
           </NavButton>
           <NavButton
             to="/nft/create"

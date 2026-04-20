@@ -133,6 +133,7 @@ type Withdrawal @entity(immutable: true) {
   transactionHash: Bytes!
 }
 
+# ItemListed 事件实体；对外 GraphQL 根字段名随 graph-node / 托管方版本变化，后端用 introspection 解析，勿在客户端写死字段名。
 type NFTMarketItemListed @entity(immutable: true) {
   id: Bytes!
   collection: Bytes! # address

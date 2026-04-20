@@ -205,6 +205,9 @@ export function NftHomePage() {
             <Link to="/nft/me" className="font-medium underline-offset-4 hover:underline">
               我的 NFT（按地址查库内持有）
             </Link>
+            <Link to="/nft/market" className="font-medium underline-offset-4 hover:underline">
+              NFT 市场（购买 / 上架）
+            </Link>
             <Link to="/nft/create" className="font-medium underline-offset-4 hover:underline">
               创作者：一键创建合集（连接钱包即可，无需懂合约）
             </Link>

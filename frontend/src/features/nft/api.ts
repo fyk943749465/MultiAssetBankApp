@@ -167,7 +167,55 @@ export type NftListingsResponse = {
   subgraph_note?: string;
   total_note?: string;
   has_more?: boolean;
+  /** 子图已配置但查询失败时，列表来自 PG 兜底，此处为子图错误信息 */
   subgraph_fallback_error?: string;
+};
+
+/** GET /api/nft/listings/verify-active — 购买前校验库内活跃挂单 */
+export type NftVerifyActiveListingResponse = {
+  chain_id: number;
+  active: boolean;
+  listing?: NftActiveListingDbRow;
+};
+
+/** GET /api/nft/market/trade-events — 扫块入库的市场事件（上架 / 改价 / 撤单 / 成交） */
+export type NftMarketTradeEventType =
+  | "ItemListed"
+  | "ListingPriceUpdated"
+  | "ListingCanceled"
+  | "ItemSold";
+
+export type NftMarketTradeEventRow = {
+  id: number;
+  chain_id: number;
+  marketplace_contract_id: number;
+  event_type: string;
+  collection_address: string;
+  token_id: string;
+  seller_account_id?: number | null;
+  buyer_account_id?: number | null;
+  price_wei?: string | null;
+  old_price_wei?: string | null;
+  new_price_wei?: string | null;
+  platform_fee_wei?: string | null;
+  royalty_amount_wei?: string | null;
+  fee_bps_snapshot?: string | null;
+  block_number: number;
+  block_time: string;
+  tx_hash: string;
+  log_index: number;
+  created_at: string;
+  seller_address: string;
+  buyer_address: string;
+};
+
+export type NftMarketTradeEventsResponse = {
+  data_source: NftDataSource;
+  chain_id: number;
+  page: number;
+  page_size: number;
+  total: number;
+  events: NftMarketTradeEventRow[];
 };
 
 export type NftListQuery = {
@@ -175,10 +223,26 @@ export type NftListQuery = {
   page_size?: number;
 };
 
+export type NftMarketTradeEventsQuery = NftListQuery & {
+  event_type?: NftMarketTradeEventType | "";
+  /** 卖家或买家地址匹配（checksummed 或全小写均可，后端校验 hex） */
+  involves?: string;
+};
+
 function listQs(q?: NftListQuery): string {
   const p = new URLSearchParams();
   if (q?.page != null && q.page > 0) p.set("page", String(q.page));
   if (q?.page_size != null && q.page_size > 0) p.set("page_size", String(q.page_size));
+  const s = p.toString();
+  return s ? `?${s}` : "";
+}
+
+function tradeEventsQs(q?: NftMarketTradeEventsQuery): string {
+  const p = new URLSearchParams();
+  if (q?.page != null && q.page > 0) p.set("page", String(q.page));
+  if (q?.page_size != null && q.page_size > 0) p.set("page_size", String(q.page_size));
+  if (q?.event_type) p.set("event_type", q.event_type);
+  if (q?.involves?.trim()) p.set("involves", q.involves.trim());
   const s = p.toString();
   return s ? `?${s}` : "";
 }
@@ -259,6 +323,32 @@ function sanitizeListings(raw: unknown): NftListingsResponse {
   };
 }
 
+function sanitizeVerifyActiveListing(raw: unknown): NftVerifyActiveListingResponse {
+  const j = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const listing = j.listing;
+  return {
+    chain_id: num(j.chain_id, 0),
+    active: Boolean(j.active),
+    listing:
+      listing && typeof listing === "object"
+        ? (listing as NftActiveListingDbRow)
+        : undefined,
+  };
+}
+
+function sanitizeTradeEvents(raw: unknown): NftMarketTradeEventsResponse {
+  const j = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const rows = j.events;
+  return {
+    data_source: j.data_source === "subgraph" ? "subgraph" : "database",
+    chain_id: num(j.chain_id, 0),
+    page: num(j.page, 1),
+    page_size: num(j.page_size, 20),
+    total: num(j.total, 0),
+    events: Array.isArray(rows) ? (rows as NftMarketTradeEventRow[]) : [],
+  };
+}
+
 export async function fetchNftSyncStatus(): Promise<NftSyncStatus> {
   const raw = await getJSON<unknown>("/api/nft/sync-status");
   return sanitizeSyncStatus(raw);
@@ -300,6 +390,22 @@ export function fetchNftHoldings(ownerAddress: string, query?: NftListQuery) {
 export async function fetchNftActiveListings(query?: NftListQuery): Promise<NftListingsResponse> {
   const raw = await getJSON<unknown>(`/api/nft/listings/active${listQs(query)}`);
   return sanitizeListings(raw);
+}
+
+export async function fetchNftVerifyActiveListing(
+  collectionAddress: string,
+  tokenId: string,
+): Promise<NftVerifyActiveListingResponse> {
+  const p = new URLSearchParams();
+  p.set("collection", collectionAddress.trim());
+  p.set("token_id", tokenId.trim());
+  const raw = await getJSON<unknown>(`/api/nft/listings/verify-active?${p.toString()}`);
+  return sanitizeVerifyActiveListing(raw);
+}
+
+export async function fetchNftMarketTradeEvents(query?: NftMarketTradeEventsQuery): Promise<NftMarketTradeEventsResponse> {
+  const raw = await getJSON<unknown>(`/api/nft/market/trade-events${tradeEventsQs(query)}`);
+  return sanitizeTradeEvents(raw);
 }
 
 /** 子图 _meta；后端未配置子图 URL 时返回 503 */

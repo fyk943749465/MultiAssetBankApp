@@ -88,6 +88,14 @@ func (c *Client) endpointForLog() string {
 	return strings.TrimSuffix(s, "/")
 }
 
+// EndpointHostPath returns host+path of the subgraph URL (no query string, no API key). Safe for cache keys and logs.
+func (c *Client) EndpointHostPath() string {
+	if c == nil {
+		return ""
+	}
+	return c.endpointForLog()
+}
+
 func (c *Client) logQueryFailure(phase string, err error) {
 	if err == nil {
 		return

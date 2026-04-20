@@ -19,14 +19,6 @@ query NftFallbackCollections($first: Int!, $skip: Int!) {
 }
 `
 
-const qNFTFallbackListings = `
-query NftFallbackListings($first: Int!, $skip: Int!) {
-  nftMarketItemListeds(first: $first, skip: $skip, orderBy: blockNumber, orderDirection: desc) {
-    id collection tokenId seller price blockNumber blockTimestamp transactionHash
-  }
-}
-`
-
 const qNFTCollectionCreatedByContract = `
 query NftCollectionCreatedByContract($addr: Bytes!) {
   collectionCreateds(where: { collection: $addr }, first: 10, orderBy: blockNumber, orderDirection: desc) {
@@ -39,12 +31,12 @@ query NftCollectionCreatedByContract($addr: Bytes!) {
 type SubgraphCollectionView struct {
 	SubgraphEntityID  string `json:"subgraph_entity_id"`
 	CollectionAddress string `json:"collection_address"`
-	CreatorAddress      string `json:"creator_address"`
-	FeePaidWei          string `json:"fee_paid_wei"`
-	SaltHex             string `json:"salt_hex,omitempty"`
-	BlockNumber         string `json:"block_number"`
-	BlockTimestamp      string `json:"block_timestamp"`
-	TransactionHash     string `json:"transaction_hash"`
+	CreatorAddress    string `json:"creator_address"`
+	FeePaidWei        string `json:"fee_paid_wei"`
+	SaltHex           string `json:"salt_hex,omitempty"`
+	BlockNumber       string `json:"block_number"`
+	BlockTimestamp    string `json:"block_timestamp"`
+	TransactionHash   string `json:"transaction_hash"`
 }
 
 // SubgraphListingView 子图 ItemListed 映射（非 nft_active_listings 表结构）。
@@ -162,33 +154,50 @@ func fetchSubgraphListingsFallback(ctx context.Context, sg *subgraph.Client, pag
 	skip := (page - 1) * pageSize
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	raw, err := sg.Query(ctx, qNFTFallbackListings, map[string]any{"first": first, "skip": skip})
+
+	field, err := resolveNFTMarketListingsCollectionField(ctx, sg)
 	if err != nil {
 		return nil, false, err
 	}
-	var wrap struct {
-		NftMarketItemListeds []struct {
-			ID              string `json:"id"`
-			Collection      string `json:"collection"`
-			TokenID         string `json:"tokenId"`
-			Seller          string `json:"seller"`
-			Price           string `json:"price"`
-			BlockNumber     string `json:"blockNumber"`
-			BlockTimestamp  string `json:"blockTimestamp"`
-			TransactionHash string `json:"transactionHash"`
-		} `json:"nftMarketItemListeds"`
+	q := fmt.Sprintf(`query NftFallbackListings($first: Int!, $skip: Int!) {
+  %s(first: $first, skip: $skip, orderBy: blockNumber, orderDirection: desc) {
+    id collection tokenId seller price blockNumber blockTimestamp transactionHash
+  }
+}`, field)
+
+	raw, err := sg.Query(ctx, q, map[string]any{"first": first, "skip": skip})
+	if err != nil {
+		return nil, false, err
 	}
-	if err := json.Unmarshal(raw, &wrap); err != nil {
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &top); err != nil {
 		return nil, false, fmt.Errorf("decode subgraph: %w", err)
 	}
-	hasMore := len(wrap.NftMarketItemListeds) > pageSize
+	arrBytes, ok := top[field]
+	if !ok {
+		return nil, false, fmt.Errorf("decode subgraph: missing field %q in response", field)
+	}
+	var rows []struct {
+		ID              string `json:"id"`
+		Collection      string `json:"collection"`
+		TokenID         string `json:"tokenId"`
+		Seller          string `json:"seller"`
+		Price           string `json:"price"`
+		BlockNumber     string `json:"blockNumber"`
+		BlockTimestamp  string `json:"blockTimestamp"`
+		TransactionHash string `json:"transactionHash"`
+	}
+	if err := json.Unmarshal(arrBytes, &rows); err != nil {
+		return nil, false, fmt.Errorf("decode subgraph listings: %w", err)
+	}
+	hasMore := len(rows) > pageSize
 	n := pageSize
-	if len(wrap.NftMarketItemListeds) < n {
-		n = len(wrap.NftMarketItemListeds)
+	if len(rows) < n {
+		n = len(rows)
 	}
 	out := make([]SubgraphListingView, 0, n)
 	for i := 0; i < n; i++ {
-		r := wrap.NftMarketItemListeds[i]
+		r := rows[i]
 		out = append(out, SubgraphListingView{
 			SubgraphEntityID:  r.ID,
 			CollectionAddress: normHexAddr(r.Collection),
