@@ -1141,6 +1141,122 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/lending/a-token-burns": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "AToken.Burn 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "aToken 合约地址",
+                        "name": "token_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "销毁方 from（与 from_address 二选一）",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "from 地址",
+                        "name": "from_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/a-token-mints": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "AToken.Mint 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "aToken 合约地址",
+                        "name": "token_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "接收方 to（与 to_address 二选一，user_address 优先）",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "接收方地址",
+                        "name": "to_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/lending/borrows": {
             "get": {
                 "description": "PostgreSQL（RPC 扫块落库为权威）。",
@@ -1222,6 +1338,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/lending/chainlink-feed-set": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "ChainlinkPriceOracle.FeedSet 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ChainlinkPriceOracle 合约地址",
+                        "name": "oracle_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "底层资产地址",
+                        "name": "asset_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/lending/contracts": {
             "get": {
                 "description": "读取 lending_contracts（006 种子 + 索引器可补充）。",
@@ -1237,6 +1405,150 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "EVM chain id，默认 84532（Base Sepolia）",
                         "name": "chain_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/emode-category-configured": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "Pool.EModeCategoryConfigured 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pool 地址",
+                        "name": "pool_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/hybrid-pool-set": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "HybridPriceOracle.PoolSet 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Hybrid 预言机合约地址",
+                        "name": "oracle_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pool 地址",
+                        "name": "pool_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/interest-rate-strategy-deployed": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "InterestRateStrategy.InterestRateStrategyDeployed 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "策略合约地址",
+                        "name": "strategy_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
                         "in": "query"
                     }
                 ],
@@ -1413,6 +1725,215 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/lending/reports-authorized-oracle-set": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "ReportsVerifier.AuthorizedOracleSet 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ReportsVerifier 合约地址",
+                        "name": "verifier_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/reports-native-swept": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "ReportsVerifier.NativeSwept 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ReportsVerifier 合约地址",
+                        "name": "verifier_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "收款地址 to 过滤",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/reports-token-swept": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "ReportsVerifier.TokenSwept 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ReportsVerifier 合约地址",
+                        "name": "verifier_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "被 sweep 的 token",
+                        "name": "token_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "收款地址 to 过滤",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/reserve-initialized": {
+            "get": {
+                "description": "PostgreSQL（007 表）。支持 pool_address、asset_address、分页。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "Pool.ReserveInitialized 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pool 地址",
+                        "name": "pool_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "底层资产地址",
+                        "name": "asset_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/lending/subgraph/meta": {
             "get": {
                 "produces": [
@@ -1500,6 +2021,122 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "库表 chain_id，默认 84532",
                         "name": "chain_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/variable-debt-token-burns": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "VariableDebtToken.Burn 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "debt token 合约地址",
+                        "name": "token_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "销毁方 from",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "from 地址",
+                        "name": "from_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/variable-debt-token-mints": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "VariableDebtToken.Mint 列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "debt token 合约地址",
+                        "name": "token_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "接收方 to",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "接收方地址",
+                        "name": "to_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
                         "in": "query"
                     }
                 ],

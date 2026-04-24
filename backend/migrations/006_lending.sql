@@ -2,6 +2,7 @@
 -- 合约参考：hardhat-tutorial/contracts/lending（Pool、HybridPriceOracle、ChainlinkPriceOracle、
 --           InterestRateStrategyFactory、ReportsVerifier、InterestRateStrategy）。
 -- 子图参考：subgraph/lending/schema.graphql（实体字段与本迁移列名对齐，便于「子图优先展示、库兜底」）。
+-- 子图后续扩展事件对应的 PG 表见 007_lending.sql（启动时先于 007 执行本文件）。
 --
 -- 数据原则（与 README 中 Bank / NFT 叙述一致，由应用层实现）：
 --   · 列表 / 历史 / 仪表盘：优先读 The Graph；子图无数据或不可用时读本库。
@@ -39,7 +40,9 @@ CREATE TABLE IF NOT EXISTS lending_contracts (
         'chainlink_price_oracle',
         'reports_verifier',
         'interest_rate_strategy_factory',
-        'interest_rate_strategy'
+        'interest_rate_strategy',
+        'a_token',
+        'variable_debt_token'
     ))
 );
 
@@ -52,12 +55,12 @@ COMMENT ON TABLE lending_contracts IS
 -- Base Sepolia 默认部署（与 subgraph/lending/networks.json 及前端默认一致）；其它环境请改 chain_id/address 或依赖索引器写入。
 INSERT INTO lending_contracts (chain_id, address, contract_kind, display_label)
 VALUES
-    (84532, '0x65213b004b54dea6cb1096794ca3f1c24066b0ff', 'lending_pool', 'Pool (Base Sepolia)'),
-    (84532, '0x37a8224bb0ea0828051adf9569967b4e8d0e1f49', 'hybrid_price_oracle', 'HybridPriceOracle'),
-    (84532, '0xf48e792dda21f978740df4acb999c22e84a9ae6c', 'chainlink_price_oracle', 'ChainlinkPriceOracle'),
-    (84532, '0xdaad54b34d4db3fdb0dddf1ad37316ff862f9ab8', 'reports_verifier', 'ReportsVerifier'),
-    (84532, '0x7f3d525a1781e295a2ab9aa74c18f28b984dfa74', 'interest_rate_strategy_factory', 'InterestRateStrategyFactory'),
-    (84532, '0x9b91e7fa1e37d32c93f1bd1ecb7be991b53112a3', 'interest_rate_strategy', 'InterestRateStrategy')
+    (84532, '0x3f0248e6ff7e414485a146c18d6b72dc9e317e5f', 'lending_pool', 'Pool (Base Sepolia)'),
+    (84532, '0xe72ac9c1d557d65094ae92739e409ca56ae12b11', 'hybrid_price_oracle', 'HybridPriceOracle'),
+    (84532, '0x3100b1fd5a2180dac11820106579545d0f1c439b', 'chainlink_price_oracle', 'ChainlinkPriceOracle'),
+    (84532, '0x960e004f33566d0b56863f54532f1785923d2799', 'reports_verifier', 'ReportsVerifier'),
+    (84532, '0xb44d1c69eaf762441d6762e094b18d2614cf1617', 'interest_rate_strategy_factory', 'InterestRateStrategyFactory'),
+    (84532, '0x0f4c88d757e370016b5cfc1ac48d013378be4a27', 'interest_rate_strategy', 'InterestRateStrategy')
 ON CONFLICT (chain_id, address) DO NOTHING;
 
 -- ---------------------------------------------------------------------------

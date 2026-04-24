@@ -6,3 +6,8 @@ import _ "embed"
 //
 //go:embed 006_lending.sql
 var SQL006Lending string
+
+// SQL007Lending 为借贷模块增量：子图新增实体对应的 PG 表、contract_kind 扩展、默认合约地址刷新。
+//
+//go:embed 007_lending.sql
+var SQL007Lending string

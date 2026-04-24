@@ -1,23 +1,29 @@
+import { Address } from "@graphprotocol/graph-ts"
 import {
   Borrow as BorrowEvent,
+  EModeCategoryConfigured as EModeCategoryConfiguredEvent,
   LiquidationCall as LiquidationCallEvent,
   Paused as PausedEvent,
   ProtocolFeeRecipientUpdated as ProtocolFeeRecipientUpdatedEvent,
   Repay as RepayEvent,
   ReserveCapsUpdated as ReserveCapsUpdatedEvent,
+  ReserveInitialized as ReserveInitializedEvent,
   ReserveLiquidationProtocolFeeUpdated as ReserveLiquidationProtocolFeeUpdatedEvent,
   Supply as SupplyEvent,
   Unpaused as UnpausedEvent,
   UserEModeSet as UserEModeSetEvent,
   Withdraw as WithdrawEvent
 } from "../generated/Pool/Pool"
+import { AToken, VariableDebtToken } from "../generated/templates"
 import {
   Borrow,
+  EModeCategoryConfigured,
   LiquidationCall,
   Paused,
   ProtocolFeeRecipientUpdated,
   Repay,
   ReserveCapsUpdated,
+  ReserveInitialized,
   ReserveLiquidationProtocolFeeUpdated,
   Supply,
   Unpaused,
@@ -114,6 +120,49 @@ export function handleReserveCapsUpdated(event: ReserveCapsUpdatedEvent): void {
   entity.blockTimestamp = event.block.timestamp
   entity.transactionHash = event.transaction.hash
 
+  entity.save()
+}
+
+export function handleReserveInitialized(event: ReserveInitializedEvent): void {
+  let entity = new ReserveInitialized(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  )
+  entity.asset = event.params.asset
+  entity.aToken = event.params.aToken
+  entity.debtToken = event.params.debtToken
+  entity.interestRateStrategy = event.params.interestRateStrategy
+  entity.ltv = event.params.ltv
+  entity.liquidationThreshold = event.params.liquidationThreshold
+  entity.liquidationBonus = event.params.liquidationBonus
+  entity.supplyCap = event.params.supplyCap
+  entity.borrowCap = event.params.borrowCap
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+  entity.save()
+
+  if (!event.params.aToken.equals(Address.zero())) {
+    AToken.create(event.params.aToken)
+  }
+  if (!event.params.debtToken.equals(Address.zero())) {
+    VariableDebtToken.create(event.params.debtToken)
+  }
+}
+
+export function handleEModeCategoryConfigured(
+  event: EModeCategoryConfiguredEvent
+): void {
+  let entity = new EModeCategoryConfigured(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  )
+  entity.categoryId = event.params.categoryId
+  entity.ltv = event.params.ltv
+  entity.liquidationThreshold = event.params.liquidationThreshold
+  entity.liquidationBonus = event.params.liquidationBonus
+  entity.label = event.params.label
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
   entity.save()
 }
 

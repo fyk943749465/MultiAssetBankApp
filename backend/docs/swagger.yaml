@@ -949,6 +949,82 @@ paths:
       summary: API info
       tags:
       - system
+  /api/lending/a-token-burns:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: aToken 合约地址
+        in: query
+        name: token_address
+        type: string
+      - description: 销毁方 from（与 from_address 二选一）
+        in: query
+        name: user_address
+        type: string
+      - description: from 地址
+        in: query
+        name: from_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: AToken.Burn 列表
+      tags:
+      - lending
+  /api/lending/a-token-mints:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: aToken 合约地址
+        in: query
+        name: token_address
+        type: string
+      - description: 接收方 to（与 to_address 二选一，user_address 优先）
+        in: query
+        name: user_address
+        type: string
+      - description: 接收方地址
+        in: query
+        name: to_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: AToken.Mint 列表
+      tags:
+      - lending
   /api/lending/borrows:
     get:
       description: PostgreSQL（RPC 扫块落库为权威）。
@@ -1003,6 +1079,40 @@ paths:
       summary: 借贷专用 RPC 连通性
       tags:
       - lending
+  /api/lending/chainlink-feed-set:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: ChainlinkPriceOracle 合约地址
+        in: query
+        name: oracle_address
+        type: string
+      - description: 底层资产地址
+        in: query
+        name: asset_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: ChainlinkPriceOracle.FeedSet 列表
+      tags:
+      - lending
   /api/lending/contracts:
     get:
       description: 读取 lending_contracts（006 种子 + 索引器可补充）。
@@ -1020,6 +1130,100 @@ paths:
             additionalProperties: true
             type: object
       summary: 借贷已登记合约
+      tags:
+      - lending
+  /api/lending/emode-category-configured:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: Pool 地址
+        in: query
+        name: pool_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Pool.EModeCategoryConfigured 列表
+      tags:
+      - lending
+  /api/lending/hybrid-pool-set:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: Hybrid 预言机合约地址
+        in: query
+        name: oracle_address
+        type: string
+      - description: Pool 地址
+        in: query
+        name: pool_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: HybridPriceOracle.PoolSet 列表
+      tags:
+      - lending
+  /api/lending/interest-rate-strategy-deployed:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: 策略合约地址
+        in: query
+        name: strategy_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: InterestRateStrategy.InterestRateStrategyDeployed 列表
       tags:
       - lending
   /api/lending/liquidations:
@@ -1131,6 +1335,143 @@ paths:
       summary: Repay 事件列表
       tags:
       - lending
+  /api/lending/reports-authorized-oracle-set:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: ReportsVerifier 合约地址
+        in: query
+        name: verifier_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: ReportsVerifier.AuthorizedOracleSet 列表
+      tags:
+      - lending
+  /api/lending/reports-native-swept:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: ReportsVerifier 合约地址
+        in: query
+        name: verifier_address
+        type: string
+      - description: 收款地址 to 过滤
+        in: query
+        name: user_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: ReportsVerifier.NativeSwept 列表
+      tags:
+      - lending
+  /api/lending/reports-token-swept:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: ReportsVerifier 合约地址
+        in: query
+        name: verifier_address
+        type: string
+      - description: 被 sweep 的 token
+        in: query
+        name: token_address
+        type: string
+      - description: 收款地址 to 过滤
+        in: query
+        name: user_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: ReportsVerifier.TokenSwept 列表
+      tags:
+      - lending
+  /api/lending/reserve-initialized:
+    get:
+      description: PostgreSQL（007 表）。支持 pool_address、asset_address、分页。
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: Pool 地址
+        in: query
+        name: pool_address
+        type: string
+      - description: 底层资产地址
+        in: query
+        name: asset_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Pool.ReserveInitialized 列表
+      tags:
+      - lending
   /api/lending/subgraph/meta:
     get:
       produces:
@@ -1195,6 +1536,82 @@ paths:
             additionalProperties: true
             type: object
       summary: 借贷读策略与子图配置
+      tags:
+      - lending
+  /api/lending/variable-debt-token-burns:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: debt token 合约地址
+        in: query
+        name: token_address
+        type: string
+      - description: 销毁方 from
+        in: query
+        name: user_address
+        type: string
+      - description: from 地址
+        in: query
+        name: from_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: VariableDebtToken.Burn 列表
+      tags:
+      - lending
+  /api/lending/variable-debt-token-mints:
+    get:
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: debt token 合约地址
+        in: query
+        name: token_address
+        type: string
+      - description: 接收方 to
+        in: query
+        name: user_address
+        type: string
+      - description: 接收方地址
+        in: query
+        name: to_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: VariableDebtToken.Mint 列表
       tags:
       - lending
   /api/lending/withdrawals:

@@ -8,9 +8,9 @@ dataSources:
     name: Pool
     network: base-sepolia
     source:
-      address: "0x65213B004b54DeA6CB1096794CA3f1C24066B0ff"
+      address: "0x3f0248e6fF7E414485A146C18d6B72Dc9E317E5F"
       abi: Pool
-      startBlock: 40591406
+      startBlock: 40633889
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -22,6 +22,8 @@ dataSources:
         - ProtocolFeeRecipientUpdated
         - Repay
         - ReserveCapsUpdated
+        - ReserveInitialized
+        - EModeCategoryConfigured
         - ReserveLiquidationProtocolFeeUpdated
         - Supply
         - Unpaused
@@ -44,6 +46,11 @@ dataSources:
           handler: handleRepay
         - event: ReserveCapsUpdated(indexed address,uint256,uint256)
           handler: handleReserveCapsUpdated
+        - event: ReserveInitialized(indexed address,indexed address,indexed
+            address,address,uint256,uint256,uint256,uint256,uint256)
+          handler: handleReserveInitialized
+        - event: EModeCategoryConfigured(indexed uint8,uint256,uint256,uint256,string)
+          handler: handleEModeCategoryConfigured
         - event: ReserveLiquidationProtocolFeeUpdated(indexed address,uint256)
           handler: handleReserveLiquidationProtocolFeeUpdated
         - event: Supply(indexed address,indexed address,uint256)
@@ -59,9 +66,9 @@ dataSources:
     name: HybridPriceOracle
     network: base-sepolia
     source:
-      address: "0x37a8224BB0ea0828051adF9569967b4e8d0e1f49"
+      address: "0xE72Ac9c1D557d65094aE92739e409cA56AE12B11"
       abi: HybridPriceOracle
-      startBlock: 40591392
+      startBlock: 40633889
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -70,12 +77,15 @@ dataSources:
         - OwnershipTransferred
         - StreamConfigUpdated
         - StreamPriceFallbackToFeed
+        - HybridPoolSet
       abis:
         - name: HybridPriceOracle
           file: ./abis/HybridPriceOracle.json
       eventHandlers:
         - event: OwnershipTransferred(indexed address,indexed address)
           handler: handleOwnershipTransferred
+        - event: PoolSet(indexed address)
+          handler: handlePoolSet
         - event: StreamConfigUpdated(indexed address,indexed bytes32,uint8)
           handler: handleStreamConfigUpdated
         - event: StreamPriceFallbackToFeed(indexed address)
@@ -85,29 +95,38 @@ dataSources:
     name: ReportsVerifier
     network: base-sepolia
     source:
-      address: "0xDaAD54b34D4db3FdB0DDDF1aD37316fF862f9ab8"
+      address: "0x960e004f33566D0B56863F54532F1785923d2799"
       abi: ReportsVerifier
-      startBlock: 40591385
+      startBlock: 40633889
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
       language: wasm/assemblyscript
       entities:
         - OwnershipTransferred
+        - AuthorizedOracleSet
+        - VerifierTokenSwept
+        - VerifierNativeSwept
       abis:
         - name: ReportsVerifier
           file: ./abis/ReportsVerifier.json
       eventHandlers:
         - event: OwnershipTransferred(indexed address,indexed address)
           handler: handleOwnershipTransferred
+        - event: AuthorizedOracleSet(indexed address)
+          handler: handleAuthorizedOracleSet
+        - event: TokenSwept(indexed address,indexed address,uint256)
+          handler: handleTokenSwept
+        - event: NativeSwept(indexed address,uint256)
+          handler: handleNativeSwept
       file: ./src/reports-verifier.ts
   - kind: ethereum
     name: InterestRateStrategyFactory
     network: base-sepolia
     source:
-      address: "0x7F3d525A1781e295a2AB9Aa74C18F28b984DFa74"
+      address: "0xB44D1c69EaF762441d6762e094B18d2614CF1617"
       abi: InterestRateStrategyFactory
-      startBlock: 40591382
+      startBlock: 40633889
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -128,15 +147,16 @@ dataSources:
     name: InterestRateStrategy
     network: base-sepolia
     source:
-      address: "0x9B91E7fa1E37d32C93f1bd1EcB7be991b53112A3"
+      address: "0x0f4C88d757e370016B5cfC1ac48d013378BE4a27"
       abi: InterestRateStrategy
-      startBlock: 40591380
+      startBlock: 40633889
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
       language: wasm/assemblyscript
       entities:
         - InterestRateStrategyImmutableParams
+        - InterestRateStrategyDeployed
       abis:
         - name: InterestRateStrategy
           file: ./abis/InterestRateStrategy.json
@@ -144,24 +164,73 @@ dataSources:
         - handler: handleInterestRateStrategyInit
           filter:
             kind: once
+      eventHandlers:
+        - event: InterestRateStrategyDeployed(uint256,uint256,uint256,uint256,uint256)
+          handler: handleInterestRateStrategyDeployed
       file: ./src/interest-rate-strategy.ts
   - kind: ethereum
     name: ChainlinkPriceOracle
     network: base-sepolia
     source:
-      address: "0xF48E792DdA21F978740DF4Acb999C22e84A9Ae6c"
+      address: "0x3100b1FD5A2180dAc11820106579545D0f1C439b"
       abi: ChainlinkPriceOracle
-      startBlock: 40591377
+      startBlock: 40633889
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
       language: wasm/assemblyscript
       entities:
         - OwnershipTransferred
+        - ChainlinkFeedSet
       abis:
         - name: ChainlinkPriceOracle
           file: ./abis/ChainlinkPriceOracle.json
       eventHandlers:
         - event: OwnershipTransferred(indexed address,indexed address)
           handler: handleOwnershipTransferred
+        - event: FeedSet(indexed address,indexed address,uint256)
+          handler: handleFeedSet
       file: ./src/chainlink-price-oracle.ts
+templates:
+  - name: AToken
+    kind: ethereum/contract
+    network: base-sepolia
+    source:
+      abi: AToken
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - ATokenMint
+        - ATokenBurn
+      abis:
+        - name: AToken
+          file: ./abis/AToken.json
+      eventHandlers:
+        - event: Mint(indexed address,uint256)
+          handler: handleATokenMint
+        - event: Burn(indexed address,uint256)
+          handler: handleATokenBurn
+      file: ./src/a-token.ts
+  - name: VariableDebtToken
+    kind: ethereum/contract
+    network: base-sepolia
+    source:
+      abi: VariableDebtToken
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - VariableDebtTokenMint
+        - VariableDebtTokenBurn
+      abis:
+        - name: VariableDebtToken
+          file: ./abis/VariableDebtToken.json
+      eventHandlers:
+        - event: Mint(indexed address,uint256)
+          handler: handleVariableDebtTokenMint
+        - event: Burn(indexed address,uint256)
+          handler: handleVariableDebtTokenBurn
+      file: ./src/variable-debt-token.ts

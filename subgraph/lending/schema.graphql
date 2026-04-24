@@ -103,6 +103,35 @@ type Withdraw @entity(immutable: true) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
+
+type ReserveInitialized @entity(immutable: true) {
+  id: Bytes!
+  asset: Bytes! # address
+  aToken: Bytes! # address
+  debtToken: Bytes! # address
+  interestRateStrategy: Bytes! # address
+  ltv: BigInt! # uint256
+  liquidationThreshold: BigInt! # uint256
+  liquidationBonus: BigInt! # uint256
+  supplyCap: BigInt! # uint256
+  borrowCap: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type EModeCategoryConfigured @entity(immutable: true) {
+  id: Bytes!
+  categoryId: Int! # uint8
+  ltv: BigInt! # uint256
+  liquidationThreshold: BigInt! # uint256
+  liquidationBonus: BigInt! # uint256
+  label: String!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
 type OwnershipTransferred @entity(immutable: true) {
   id: Bytes!
   emitter: Bytes! # contract that emitted the event
@@ -126,6 +155,104 @@ type StreamConfigUpdated @entity(immutable: true) {
 type StreamPriceFallbackToFeed @entity(immutable: true) {
   id: Bytes!
   asset: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type HybridPoolSet @entity(immutable: true) {
+  id: Bytes!
+  pool: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type AuthorizedOracleSet @entity(immutable: true) {
+  id: Bytes!
+  oracle: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VerifierTokenSwept @entity(immutable: true) {
+  id: Bytes!
+  token: Bytes! # address
+  to: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VerifierNativeSwept @entity(immutable: true) {
+  id: Bytes!
+  to: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ChainlinkFeedSet @entity(immutable: true) {
+  id: Bytes!
+  asset: Bytes! # address
+  feed: Bytes! # address
+  stalePeriod: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type InterestRateStrategyDeployed @entity(immutable: true) {
+  id: Bytes!
+  strategy: Bytes! # contract address (emitter)
+  optimalUtilization: BigInt!
+  baseBorrowRate: BigInt!
+  slope1: BigInt!
+  slope2: BigInt!
+  reserveFactor: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ATokenMint @entity(immutable: true) {
+  id: Bytes!
+  token: Bytes! # aToken contract
+  to: Bytes! # address
+  scaledAmount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ATokenBurn @entity(immutable: true) {
+  id: Bytes!
+  token: Bytes! # aToken contract
+  from: Bytes! # address
+  scaledAmount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VariableDebtTokenMint @entity(immutable: true) {
+  id: Bytes!
+  token: Bytes! # debt token contract
+  to: Bytes! # address
+  scaledAmount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VariableDebtTokenBurn @entity(immutable: true) {
+  id: Bytes!
+  token: Bytes! # debt token contract
+  from: Bytes! # address
+  scaledAmount: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!

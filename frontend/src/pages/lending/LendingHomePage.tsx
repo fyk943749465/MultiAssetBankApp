@@ -1,5 +1,6 @@
 import { LENDING_CHAIN_ID, LENDING_CHAIN_NAME, getLendingContractRows } from "@/config/lending";
 import { LendingHomeDataSection } from "@/features/lending/LendingHomeDataSection";
+import { LendingExtendedPgSection } from "@/features/lending/LendingExtendedPgSection";
 import { SectionIntro } from "@/features/codepulse/components";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +70,8 @@ export function LendingHomePage() {
       />
 
       <LendingHomeDataSection />
+
+      <LendingExtendedPgSection />
 
       <div className="grid gap-4 md:grid-cols-3">
         {ROADMAP_PHASES.map((p) => (

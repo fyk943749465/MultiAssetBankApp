@@ -1,262 +1,455 @@
 [
   {
+    "type": "constructor",
     "inputs": [
-      { "internalType": "address", "name": "_feedOracle", "type": "address" },
       {
-        "internalType": "address",
+        "name": "_feedOracle",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "_streamVerifier",
-        "type": "address"
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
+    "stateMutability": "nonpayable"
   },
-  { "inputs": [], "name": "FeedRegistryInvariantBroken", "type": "error" },
-  { "inputs": [], "name": "OnlyPool", "type": "error" },
   {
-    "inputs": [
-      { "internalType": "address", "name": "owner", "type": "address" }
-    ],
+    "name": "FeedRegistryInvariantBroken",
+    "type": "error",
+    "inputs": []
+  },
+  {
+    "name": "OnlyPool",
+    "type": "error",
+    "inputs": []
+  },
+  {
     "name": "OwnableInvalidOwner",
-    "type": "error"
+    "type": "error",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
   },
   {
-    "inputs": [
-      { "internalType": "address", "name": "account", "type": "address" }
-    ],
     "name": "OwnableUnauthorizedAccount",
-    "type": "error"
-  },
-  { "inputs": [], "name": "PoolAlreadySet", "type": "error" },
-  { "inputs": [], "name": "PoolNotSet", "type": "error" },
-  { "inputs": [], "name": "StreamDecimalsTooLarge", "type": "error" },
-  { "inputs": [], "name": "StreamFeedDecimalsConflict", "type": "error" },
-  { "inputs": [], "name": "StreamFeedRequiresDecimals", "type": "error" },
-  { "inputs": [], "name": "StreamProofRequiresLinkPayer", "type": "error" },
-  { "inputs": [], "name": "ZeroPoolAddress", "type": "error" },
-  {
-    "anonymous": false,
+    "type": "error",
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "previousOwner",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
       }
-    ],
+    ]
+  },
+  {
+    "name": "PoolAlreadySet",
+    "type": "error",
+    "inputs": []
+  },
+  {
+    "name": "PoolNotSet",
+    "type": "error",
+    "inputs": []
+  },
+  {
+    "name": "StreamDecimalsTooLarge",
+    "type": "error",
+    "inputs": []
+  },
+  {
+    "name": "StreamFeedDecimalsConflict",
+    "type": "error",
+    "inputs": []
+  },
+  {
+    "name": "StreamFeedRequiresDecimals",
+    "type": "error",
+    "inputs": []
+  },
+  {
+    "name": "StreamProofRequiresLinkPayer",
+    "type": "error",
+    "inputs": []
+  },
+  {
+    "name": "ZeroPoolAddress",
+    "type": "error",
+    "inputs": []
+  },
+  {
     "name": "OwnershipTransferred",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
+    "type": "event",
     "inputs": [
       {
+        "name": "previousOwner",
+        "type": "address",
         "indexed": true,
-        "internalType": "address",
-        "name": "asset",
-        "type": "address"
+        "internalType": "address"
       },
       {
+        "name": "newOwner",
+        "type": "address",
         "indexed": true,
-        "internalType": "bytes32",
-        "name": "streamFeedId",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint8",
-        "name": "priceDecimals",
-        "type": "uint8"
+        "internalType": "address"
       }
     ],
+    "anonymous": false
+  },
+  {
+    "name": "PoolSet",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "pool",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "name": "StreamConfigUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
+    "type": "event",
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "address",
         "name": "asset",
-        "type": "address"
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "streamFeedId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "priceDecimals",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
+    "anonymous": false
+  },
+  {
     "name": "StreamPriceFallbackToFeed",
-    "type": "event"
+    "type": "event",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
   },
   {
-    "inputs": [
-      { "internalType": "address", "name": "asset", "type": "address" }
-    ],
     "name": "assetToStreamFeedId",
-    "outputs": [
-      { "internalType": "bytes32", "name": "streamFeedId", "type": "bytes32" }
+    "type": "function",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "outputs": [
+      {
+        "name": "streamFeedId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
-    "inputs": [
-      { "internalType": "address", "name": "asset", "type": "address" },
-      { "internalType": "uint256", "name": "usdWad", "type": "uint256" }
-    ],
     "name": "convertUsdWadFromFeed",
-    "outputs": [
-      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+    "type": "function",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "usdWad",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
-    "inputs": [
-      { "internalType": "address", "name": "asset", "type": "address" },
-      { "internalType": "uint256", "name": "usdWad", "type": "uint256" },
-      { "internalType": "bytes", "name": "streamProof", "type": "bytes" },
-      { "internalType": "address", "name": "linkPayer", "type": "address" }
-    ],
     "name": "convertUsdWadToAssetAmount",
-    "outputs": [
-      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+    "type": "function",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "usdWad",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamProof",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "linkPayer",
+        "type": "address",
+        "internalType": "address"
+      }
     ],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
   },
   {
-    "inputs": [
-      { "internalType": "bytes32", "name": "streamFeedId", "type": "bytes32" }
-    ],
     "name": "feedIdPriceDecimals",
-    "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
-    "stateMutability": "view",
-    "type": "function"
+    "type": "function",
+    "inputs": [
+      {
+        "name": "streamFeedId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
-    "inputs": [
-      { "internalType": "bytes32", "name": "streamFeedId", "type": "bytes32" }
-    ],
     "name": "feedIdRefCount",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
+    "type": "function",
+    "inputs": [
+      {
+        "name": "streamFeedId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
     "name": "feedOracle",
+    "type": "function",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "contract ChainlinkPriceOracle",
         "name": "",
-        "type": "address"
+        "type": "address",
+        "internalType": "contract ChainlinkPriceOracle"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [
-      { "internalType": "address", "name": "asset", "type": "address" },
-      { "internalType": "uint256", "name": "amount", "type": "uint256" },
-      { "internalType": "bytes", "name": "streamProof", "type": "bytes" },
-      { "internalType": "address", "name": "linkPayer", "type": "address" }
-    ],
     "name": "getUsdValueWad",
-    "outputs": [
-      { "internalType": "uint256", "name": "usdWad", "type": "uint256" }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
+    "type": "function",
     "inputs": [
-      { "internalType": "address", "name": "asset", "type": "address" },
-      { "internalType": "uint256", "name": "amount", "type": "uint256" }
-    ],
-    "name": "getUsdValueWadFromFeed",
-    "outputs": [
-      { "internalType": "uint256", "name": "usdWad", "type": "uint256" }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "owner",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "pool",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "renounceOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "address", "name": "pool_", "type": "address" }
-    ],
-    "name": "setPool",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "address", "name": "asset", "type": "address" },
-      { "internalType": "bytes32", "name": "streamFeedId", "type": "bytes32" },
-      { "internalType": "uint8", "name": "priceDecimals", "type": "uint8" }
-    ],
-    "name": "setStreamConfig",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "address", "name": "asset", "type": "address" }
-    ],
-    "name": "streamPriceDecimalsByAsset",
-    "outputs": [
-      { "internalType": "uint8", "name": "priceDecimals", "type": "uint8" }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "streamVerifier",
-    "outputs": [
       {
-        "internalType": "contract ReportsVerifier",
-        "name": "",
-        "type": "address"
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamProof",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "linkPayer",
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "outputs": [
+      {
+        "name": "usdWad",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
   },
   {
+    "name": "getUsdValueWadFromFeed",
+    "type": "function",
     "inputs": [
-      { "internalType": "address", "name": "newOwner", "type": "address" }
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
     ],
-    "name": "transferOwnership",
+    "outputs": [
+      {
+        "name": "usdWad",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "owner",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "pool",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "renounceOwnership",
+    "type": "function",
+    "inputs": [],
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "setPool",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "pool_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "setStreamConfig",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "streamFeedId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "priceDecimals",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "streamPriceDecimalsByAsset",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "priceDecimals",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "streamVerifier",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ReportsVerifier"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "transferOwnership",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   }
 ]

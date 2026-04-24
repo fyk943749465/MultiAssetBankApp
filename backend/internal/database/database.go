@@ -48,5 +48,8 @@ func Connect(dsn string) (*gorm.DB, error) {
 	if err := ApplyLending006Migration(db); err != nil {
 		return nil, err
 	}
+	if err := ApplyLending007Migration(db); err != nil {
+		return nil, err
+	}
 	return db, nil
 }

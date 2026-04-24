@@ -157,7 +157,7 @@ export function LendingHomeDataSection() {
               GET /api/lending/contracts
             </Badge>
           </div>
-          <CardDescription>与迁移 006 种子一致；后端权威列表。</CardDescription>
+          <CardDescription>与迁移 006/007 种子一致；后端权威列表。</CardDescription>
         </CardHeader>
         <CardContent>
           {contractsErr ? (

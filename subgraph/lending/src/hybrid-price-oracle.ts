@@ -1,9 +1,11 @@
 import {
   OwnershipTransferred as OwnershipTransferredEvent,
+  PoolSet as PoolSetEvent,
   StreamConfigUpdated as StreamConfigUpdatedEvent,
   StreamPriceFallbackToFeed as StreamPriceFallbackToFeedEvent,
 } from "../generated/HybridPriceOracle/HybridPriceOracle"
 import {
+  HybridPoolSet,
   OwnershipTransferred,
   StreamConfigUpdated,
   StreamPriceFallbackToFeed,
@@ -23,6 +25,17 @@ export function handleOwnershipTransferred(
   entity.blockTimestamp = event.block.timestamp
   entity.transactionHash = event.transaction.hash
 
+  entity.save()
+}
+
+export function handlePoolSet(event: PoolSetEvent): void {
+  let entity = new HybridPoolSet(
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
+  )
+  entity.pool = event.params.pool
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
   entity.save()
 }
 

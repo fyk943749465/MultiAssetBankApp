@@ -1,13 +1,14 @@
 import { type Address, isAddress } from "viem";
 
 /** 借贷池与周边合约默认地址（Base Sepolia）；可用 VITE_* 覆盖。 */
+/** 与 subgraph/lending 当前 networks 默认一致（Base Sepolia 新部署） */
 const DEFAULTS = {
-  pool: "0x65213B004b54DeA6CB1096794CA3f1C24066B0ff",
-  hybridPriceOracle: "0x37a8224BB0ea0828051adF9569967b4e8d0e1f49",
-  chainlinkPriceOracle: "0xF48E792DdA21F978740DF4Acb999C22e84A9Ae6c",
-  reportsVerifier: "0xDaAD54b34D4db3FdB0DDDF1aD37316fF862f9ab8",
-  interestRateStrategyFactory: "0x7F3d525A1781e295a2AB9Aa74C18F28b984DFa74",
-  interestRateStrategy: "0x9B91E7fa1E37d32C93f1bd1EcB7be991b53112A3",
+  pool: "0x3f0248e6fF7E414485A146C18d6B72Dc9E317E5F",
+  hybridPriceOracle: "0xE72Ac9c1D557d65094aE92739e409cA56AE12B11",
+  chainlinkPriceOracle: "0x3100b1FD5A2180dAc11820106579545D0f1C439b",
+  reportsVerifier: "0x960e004f33566D0B56863F54532F1785923d2799",
+  interestRateStrategyFactory: "0xB44D1c69EaF762441d6762e094B18d2614CF1617",
+  interestRateStrategy: "0x0f4C88d757e370016B5cfC1ac48d013378BE4a27",
 } as const;
 
 export const LENDING_CHAIN_ID = 84532 as const;

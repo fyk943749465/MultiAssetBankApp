@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -281,6 +282,37 @@ func main() {
 		go func() {
 			time.Sleep(staggerNft)
 			nftIx.Run(context.Background())
+		}()
+	}
+
+	switch {
+	case db == nil || lendingEthClient == nil:
+		if db == nil {
+			log.Printf("lending rpc indexer: 未启动（无数据库）")
+		} else {
+			log.Printf("lending rpc indexer: 未启动（未配置或无法连接 LENDING_ETH_RPC_URL / BASE_ETH_RPC_URL）")
+		}
+	default:
+		rpcCID, errLC := lendingEthClient.ChainID(context.Background())
+		if errLC != nil {
+			log.Printf("lending rpc indexer: 未启动（读取借贷链 chainId 失败: %v）", errLC)
+			break
+		}
+		lendChainID := int64(*rpcCID)
+		if cfg.LendingChainID > 0 && cfg.LendingChainID != lendChainID {
+			log.Printf("lending rpc indexer: 警告 LENDING_CHAIN_ID=%d 与节点 chain_id=%d 不一致；索引器以节点为准写入 PG", cfg.LendingChainID, lendChainID)
+		}
+		lendIx := indexer.NewLendingRPC(db, lendingEthClient.Eth(), lendChainID, cfg.LendingIndexerStartBlock)
+		cursorName := fmt.Sprintf("lending_bundle_rpc_%d", lendChainID)
+		log.Printf("lending rpc indexer: 已启动 chain_id=%d（Base Sepolia 等借贷专用 RPC，与 Sepolia ETH_RPC_URL 隔离；游标 chain_indexer_cursors.name=%s；起始块见 LENDING_INDEXER_START_BLOCK）",
+			lendChainID, cursorName)
+		staggerLend := time.Duration(cfg.IndexerPollSeconds) * time.Second
+		if staggerLend < 8*time.Second {
+			staggerLend = 8 * time.Second
+		}
+		go func() {
+			time.Sleep(staggerLend)
+			lendIx.Run(context.Background())
 		}()
 	}
 

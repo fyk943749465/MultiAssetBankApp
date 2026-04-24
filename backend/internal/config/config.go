@@ -49,6 +49,8 @@ type Config struct {
 	LendingSubgraphAPIKeySource string // which env won: SUBGRAPH_LENDING_API_KEY | SUBGRAPH_API_SECOND_KEY | "" (empty if no key)
 	// LendingEthRPCURL：借贷专用 JSON-RPC；LENDING_ETH_RPC_URL 优先，否则 BASE_ETH_RPC_URL。与 EthRPCURL（银行/Code Pulse 等）隔离。
 	LendingEthRPCURL string
+	// LendingIndexerStartBlock：借贷 RPC 索引起始块（0=首次游标为已确认头往前约 2000 块，与 Bank 一致）。
+	LendingIndexerStartBlock uint64
 }
 
 func Load() (*Config, error) {
@@ -139,6 +141,8 @@ func Load() (*Config, error) {
 		lendingRPC = strings.TrimSpace(os.Getenv("BASE_ETH_RPC_URL"))
 	}
 
+	lendingIdxStart, _ := strconv.ParseUint(strings.TrimSpace(os.Getenv("LENDING_INDEXER_START_BLOCK")), 10, 64)
+
 	return &Config{
 		ServerAddr:                         getEnv("SERVER_ADDR", ":8080"),
 		DatabaseURL:                        os.Getenv("DATABASE_URL"),
@@ -170,6 +174,7 @@ func Load() (*Config, error) {
 		LendingSubgraphAPIKey:              lendingSubKey,
 		LendingSubgraphAPIKeySource:        lendingSubKeySource,
 		LendingEthRPCURL:                   lendingRPC,
+		LendingIndexerStartBlock:         lendingIdxStart,
 	}, nil
 }
 
