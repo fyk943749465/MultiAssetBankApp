@@ -306,6 +306,18 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/code-pulse/admin/events": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "code-pulse-admin"
+                ],
+                "summary": "List indexed event log (admin)",
+                "responses": {}
+            }
+        },
         "/api/code-pulse/admin/platform-funds": {
             "get": {
                 "produces": [
@@ -776,6 +788,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "If true, only proposals waiting to enter fundraising (approved + round_review_approved, or approved with no round state and never launched)",
+                        "name": "waiting_launch_queue",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page number (default 1)",
                         "name": "page",
@@ -1123,6 +1141,432 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/lending/borrows": {
+            "get": {
+                "description": "PostgreSQL（RPC 扫块落库为权威）。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "Borrow 事件列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pool 地址过滤",
+                        "name": "pool_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "用户地址过滤",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/chain-status": {
+            "get": {
+                "description": "使用 LENDING_ETH_RPC_URL 或 BASE_ETH_RPC_URL 建立的客户端，与 GET /api/chain/status（ETH_RPC_URL）完全隔离。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "借贷专用 RPC 连通性",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/contracts": {
+            "get": {
+                "description": "读取 lending_contracts（006 种子 + 索引器可补充）。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "借贷已登记合约",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "EVM chain id，默认 84532（Base Sepolia）",
+                        "name": "chain_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/liquidations": {
+            "get": {
+                "description": "PostgreSQL（RPC 扫块落库为权威）。user_address 匹配 borrower 或 liquidator。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "Liquidation 事件列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pool 地址过滤",
+                        "name": "pool_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "借款人或清算人地址过滤",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/native-balance": {
+            "get": {
+                "description": "使用借贷专用 RPC（LENDING_ETH_RPC_URL / BASE_ETH_RPC_URL），与 ETH_RPC_URL 隔离。余额为 wei 十进制字符串，避免 JSON 大整数精度问题。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "查询地址在借贷链上的原生 ETH 余额",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "0x 地址，与 user_address 二选一",
+                        "name": "address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "同 address，便于与其它借贷接口一致",
+                        "name": "user_address",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/repays": {
+            "get": {
+                "description": "PostgreSQL（RPC 扫块落库为权威）。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "Repay 事件列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pool 地址过滤",
+                        "name": "pool_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "用户地址过滤",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/subgraph/meta": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "探测借贷子图 GraphQL",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/supplies": {
+            "get": {
+                "description": "子图已配置且返回非空时优先子图；否则 PostgreSQL。权威事实以 RPC 落库为准。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "Supply 事件列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pool 地址过滤",
+                        "name": "pool_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "用户地址过滤",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/sync-status": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "借贷读策略与子图配置",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "库表 chain_id，默认 84532",
+                        "name": "chain_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lending/withdrawals": {
+            "get": {
+                "description": "PostgreSQL（RPC 扫块落库为权威）。支持 pool_address、user_address、分页。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lending"
+                ],
+                "summary": "Withdraw 事件列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "默认 84532 或 LENDING_CHAIN_ID",
+                        "name": "chain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pool 地址过滤",
+                        "name": "pool_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "用户地址过滤",
+                        "name": "user_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，默认 20，最大 100",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Returns JSON ` + "`" + `{ \"status\": \"ok\" }` + "`" + ` when the process is running.",
@@ -1173,6 +1617,13 @@ const docTemplate = `{
         "codepulse.ActionCheckResp": {
             "type": "object",
             "properties": {
+                "advisory_code": {
+                    "description": "AdvisoryCode / AdvisoryMessage 为不阻止交易的补充说明（如撤销 initiator 对已有 organizer 提案的影响）。",
+                    "type": "string"
+                },
+                "advisory_message": {
+                    "type": "string"
+                },
                 "allowed": {
                     "type": "boolean"
                 },
@@ -1431,7 +1882,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "go-chain API",
-	Description:      "REST API: health, chain status, counter contract calls, bank ledger (PostgreSQL indexer + optional The Graph subgraph).",
+	Description:      "REST API: health, chain status, counter contract calls, bank ledger (PostgreSQL indexer + optional The Graph subgraph). Code Pulse: PostgreSQL is filled by RPC log indexer by default; subgraph sync to DB is optional. NFT: RPC indexer writes factory/market/collection events to PostgreSQL (005_nft_platform); list endpoints may still prefer The Graph when configured; subgraph is not persisted to PostgreSQL.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

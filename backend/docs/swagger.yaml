@@ -19,6 +19,12 @@ definitions:
     type: object
   codepulse.ActionCheckResp:
     properties:
+      advisory_code:
+        description: AdvisoryCode / AdvisoryMessage 为不阻止交易的补充说明（如撤销 initiator 对已有
+          organizer 提案的影响）。
+        type: string
+      advisory_message:
+        type: string
       allowed:
         type: boolean
       current_state:
@@ -185,7 +191,11 @@ definitions:
 info:
   contact: {}
   description: 'REST API: health, chain status, counter contract calls, bank ledger
-    (PostgreSQL indexer + optional The Graph subgraph).'
+    (PostgreSQL indexer + optional The Graph subgraph). Code Pulse: PostgreSQL is
+    filled by RPC log indexer by default; subgraph sync to DB is optional. NFT: RPC
+    indexer writes factory/market/collection events to PostgreSQL (005_nft_platform);
+    list endpoints may still prefer The Graph when configured; subgraph is not persisted
+    to PostgreSQL.'
   title: go-chain API
   version: 0.1.0
 paths:
@@ -389,6 +399,14 @@ paths:
       summary: Admin dashboard
       tags:
       - code-pulse
+  /api/code-pulse/admin/events:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      summary: List indexed event log (admin)
+      tags:
+      - code-pulse-admin
   /api/code-pulse/admin/platform-funds:
     get:
       parameters:
@@ -693,6 +711,11 @@ paths:
         in: query
         name: review_state
         type: string
+      - description: If true, only proposals waiting to enter fundraising (approved
+          + round_review_approved, or approved with no round state and never launched)
+        in: query
+        name: waiting_launch_queue
+        type: string
       - description: Page number (default 1)
         in: query
         name: page
@@ -926,6 +949,289 @@ paths:
       summary: API info
       tags:
       - system
+  /api/lending/borrows:
+    get:
+      description: PostgreSQL（RPC 扫块落库为权威）。
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: Pool 地址过滤
+        in: query
+        name: pool_address
+        type: string
+      - description: 用户地址过滤
+        in: query
+        name: user_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Borrow 事件列表
+      tags:
+      - lending
+  /api/lending/chain-status:
+    get:
+      description: 使用 LENDING_ETH_RPC_URL 或 BASE_ETH_RPC_URL 建立的客户端，与 GET /api/chain/status（ETH_RPC_URL）完全隔离。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 借贷专用 RPC 连通性
+      tags:
+      - lending
+  /api/lending/contracts:
+    get:
+      description: 读取 lending_contracts（006 种子 + 索引器可补充）。
+      parameters:
+      - description: EVM chain id，默认 84532（Base Sepolia）
+        in: query
+        name: chain_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 借贷已登记合约
+      tags:
+      - lending
+  /api/lending/liquidations:
+    get:
+      description: PostgreSQL（RPC 扫块落库为权威）。user_address 匹配 borrower 或 liquidator。
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: Pool 地址过滤
+        in: query
+        name: pool_address
+        type: string
+      - description: 借款人或清算人地址过滤
+        in: query
+        name: user_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Liquidation 事件列表
+      tags:
+      - lending
+  /api/lending/native-balance:
+    get:
+      description: 使用借贷专用 RPC（LENDING_ETH_RPC_URL / BASE_ETH_RPC_URL），与 ETH_RPC_URL
+        隔离。余额为 wei 十进制字符串，避免 JSON 大整数精度问题。
+      parameters:
+      - description: 0x 地址，与 user_address 二选一
+        in: query
+        name: address
+        type: string
+      - description: 同 address，便于与其它借贷接口一致
+        in: query
+        name: user_address
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 查询地址在借贷链上的原生 ETH 余额
+      tags:
+      - lending
+  /api/lending/repays:
+    get:
+      description: PostgreSQL（RPC 扫块落库为权威）。
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: Pool 地址过滤
+        in: query
+        name: pool_address
+        type: string
+      - description: 用户地址过滤
+        in: query
+        name: user_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Repay 事件列表
+      tags:
+      - lending
+  /api/lending/subgraph/meta:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 探测借贷子图 GraphQL
+      tags:
+      - lending
+  /api/lending/supplies:
+    get:
+      description: 子图已配置且返回非空时优先子图；否则 PostgreSQL。权威事实以 RPC 落库为准。
+      parameters:
+      - description: 默认 84532
+        in: query
+        name: chain_id
+        type: integer
+      - description: Pool 地址过滤
+        in: query
+        name: pool_address
+        type: string
+      - description: 用户地址过滤
+        in: query
+        name: user_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Supply 事件列表
+      tags:
+      - lending
+  /api/lending/sync-status:
+    get:
+      parameters:
+      - description: 库表 chain_id，默认 84532
+        in: query
+        name: chain_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 借贷读策略与子图配置
+      tags:
+      - lending
+  /api/lending/withdrawals:
+    get:
+      description: PostgreSQL（RPC 扫块落库为权威）。支持 pool_address、user_address、分页。
+      parameters:
+      - description: 默认 84532 或 LENDING_CHAIN_ID
+        in: query
+        name: chain_id
+        type: integer
+      - description: Pool 地址过滤
+        in: query
+        name: pool_address
+        type: string
+      - description: 用户地址过滤
+        in: query
+        name: user_address
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最大 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Withdraw 事件列表
+      tags:
+      - lending
   /health:
     get:
       description: 'Returns JSON `{ "status": "ok" }` when the process is running.'

@@ -18,6 +18,7 @@ export function AppLayout() {
   const bankActive = pathname === "/bank";
   const crowdfundingActive = pathname.startsWith("/crowdfunding");
   const nftActive = pathname.startsWith("/nft");
+  const lendingActive = pathname.startsWith("/lending");
 
   return (
     <div className="relative flex min-h-screen flex-col selection:bg-primary/20">
@@ -33,13 +34,14 @@ export function AppLayout() {
           <div className="absolute left-1/2 top-1/2 -z-10 h-[120px] w-[60%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 opacity-50 blur-[80px]"></div>
           
           <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.4em] text-primary/80">
-            Sepolia · Wagmi · Viem
+            L1 Sepolia · L2 Base Sepolia · Wagmi · Viem
           </p>
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-7xl">
             <span className="text-gradient-brand drop-shadow-sm">GO-CHAIN</span>
           </h1>
           <p className="mx-auto mt-6 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-            多业务入口：各模块页面相互独立；<span className="text-foreground font-medium">钱包</span>在右上角，全站共用。
+            多业务入口：银行 / 众筹 / NFT 仅 <span className="text-foreground font-medium">Ethereum Sepolia（L1）</span>；借贷仅{" "}
+            <span className="text-foreground font-medium">Base Sepolia（L2）</span>。钱包在右上角，按当前页面自动提示应处网络。
           </p>
 
           <nav
@@ -69,6 +71,14 @@ export function AppLayout() {
               onClick={() => navigate("/nft")}
             >
               NFT
+            </button>
+            <button
+              type="button"
+              className={navClass({ isActive: lendingActive })}
+              aria-current={lendingActive ? "page" : undefined}
+              onClick={() => navigate("/lending")}
+            >
+              借贷
             </button>
           </nav>
         </div>

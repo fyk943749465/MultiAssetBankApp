@@ -6,6 +6,7 @@ import (
 	hchain "go-chain/backend/internal/handlers/chain"
 	hcp "go-chain/backend/internal/handlers/codepulse"
 	hctr "go-chain/backend/internal/handlers/contract"
+	hlending "go-chain/backend/internal/handlers/lending"
 	hnft "go-chain/backend/internal/handlers/nft"
 	hsys "go-chain/backend/internal/handlers/system"
 
@@ -50,6 +51,7 @@ func New(h *handlers.Handlers) *gin.Engine {
 
 	hcp.Register(r, h)
 	hnft.Register(r, h)
+	hlending.Register(r, h)
 
 	return r
 }

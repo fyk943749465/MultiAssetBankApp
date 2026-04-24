@@ -103,3 +103,57 @@ type Withdraw @entity(immutable: true) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
+type OwnershipTransferred @entity(immutable: true) {
+  id: Bytes!
+  emitter: Bytes! # contract that emitted the event
+  previousOwner: Bytes! # address
+  newOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type StreamConfigUpdated @entity(immutable: true) {
+  id: Bytes!
+  asset: Bytes! # address
+  streamFeedId: Bytes! # bytes32
+  priceDecimals: Int! # uint8
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type StreamPriceFallbackToFeed @entity(immutable: true) {
+  id: Bytes!
+  asset: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type InterestRateStrategyCreated @entity(immutable: true) {
+  id: Bytes!
+  factory: Bytes! # address
+  strategy: Bytes! # address
+  strategyIndex: BigInt! # factory id
+  optimalUtilization: BigInt!
+  baseBorrowRate: BigInt!
+  slope1: BigInt!
+  slope2: BigInt!
+  reserveFactor: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+# Snapshot from on-chain getters (InterestRateStrategy emits no events; indexed once at startBlock).
+type InterestRateStrategyImmutableParams @entity(immutable: true) {
+  id: Bytes! # strategy contract address
+  optimalUtilization: BigInt!
+  baseBorrowRate: BigInt!
+  slope1: BigInt!
+  slope2: BigInt!
+  reserveFactor: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+}

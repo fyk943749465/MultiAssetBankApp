@@ -110,6 +110,15 @@ go generate ./cmd/server/...
 | `CODE_PULSE_SUBGRAPH_START_BLOCK` | 子图同步起始块（仅当 `CODE_PULSE_SUBGRAPH_SYNC` 开启；内部存 `块号-1` 作为首次 `blockNumber_gt`） |
 | `CODE_PULSE_SUBGRAPH_POLL_SECONDS` | 子图同步轮询间隔（秒），默认 `25` |
 
+## 借贷模块：`006_lending` 迁移与子图
+
+- 迁移文件 **`backend/migrations/006_lending.sql`** 定义 **`lending_*`** 表：与 **`hardhat-tutorial/contracts/lending`** 中 Pool / HybridPriceOracle / InterestRateStrategyFactory 等事件及 **`subgraph/lending`** 中实体字段对齐，供 **Base Sepolia（`chain_id = 84532`）** 上 RPC 扫块落库。
+- **扫块进度**仍使用 **`chain_indexer_cursors`**（`001` 中已建表，**无需加列**）。建议游标名含链号以便与 Sepolia 上其它索引器区分，例如 **`lending_pool_rpc_84532`**（仅扫 Pool）；若 Oracle / Factory 独立进程，可另起 **`lending_hybrid_oracle_rpc_84532`** 等**不同 `name`** 各管一段块高。
+- **读策略（与 Bank / NFT 叙述一致，由应用层实现）**：
+  - **列表 / 历史 / 仪表盘**：已配置子图且子图有数据时**优先 The Graph**（`subgraph/lending`）；子图不可用或无数据时用 **PostgreSQL** 兜底。
+  - **存款、取款、借款、还款、清算**等关键链上事实：以 **RPC 写入的 `lending_*` 表**为权威来源；子图用于展示加速，**不应反向覆盖**已落库事件行。
+- **与其它模块隔离**：借贷子图 Bearer 仅 **`SUBGRAPH_LENDING_API_KEY`** 或 **`SUBGRAPH_API_SECOND_KEY`**（不使用 **`SUBGRAPH_API_KEY`**）；借贷 JSON-RPC 为 **`LENDING_ETH_RPC_URL`** 或 **`BASE_ETH_RPC_URL`**，与银行/Code Pulse/NFT 使用的 **`ETH_RPC_URL`** 无关。连通性见 **`GET /api/lending/chain-status`**。
+
 ## Code Pulse：RPC 索引（权威 PG）与子图（可选入库）
 
 - **PostgreSQL `cp_*` 表**：默认仅由 **RPC `eth_getLogs` 扫块**（与 `BANK_CONTRACT` 索引器同模式：已确认区块游标在 `chain_indexer_cursors`，名称含 `code_pulse_rpc_`）写入；允许相对子图有延迟，但流程上「以库为准」时应读后端 API/DB。

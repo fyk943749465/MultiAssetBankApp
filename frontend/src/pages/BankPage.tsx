@@ -8,8 +8,10 @@ import {
   type ApiInfo,
   type ChainStatus,
 } from "../api";
+import { ModuleChainGate } from "@/components/ModuleChainGate";
 import { BankDeposit } from "../components/BankDeposit";
 import { BankLedgerHistory } from "../components/BankLedgerHistory";
+import { L1_MODULE_CHAIN_ID } from "@/lib/chain-policy";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -95,14 +97,17 @@ export function BankPage() {
           Backend Connected via Vite Proxy
         </p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          此页面演示了以太坊链上交互与 Go 后端 API 的无缝集成。包含银行账本记录、存款功能健康状态监控，以及智能合约的完整生命周期调用。
+          银行链上交互（MultiAssetBank 存取等）仅在 <strong className="text-foreground">Ethereum Sepolia（L1）</strong>{" "}
+          执行；已连接钱包且网络不对时，下方账本与存取卡片将锁定。后端健康与 Counter 代理仍可在任意网络下浏览。
         </p>
       </div>
 
-      <div className="space-y-6">
-        <BankLedgerHistory />
-        <BankDeposit />
-      </div>
+      <ModuleChainGate requiredChainId={L1_MODULE_CHAIN_ID} moduleName="银行与后端（链上存取）">
+        <div className="space-y-6">
+          <BankLedgerHistory />
+          <BankDeposit />
+        </div>
+      </ModuleChainGate>
 
       {err && (
         <Alert variant="destructive" className="glass-card border-destructive/50 bg-destructive/10 text-destructive-foreground animate-in fade-in slide-in-from-bottom-4">

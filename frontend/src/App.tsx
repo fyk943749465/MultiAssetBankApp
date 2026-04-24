@@ -17,6 +17,9 @@ import { NftCreateCollectionPage } from "./pages/nft/NftCreateCollectionPage";
 import { NftMyHoldingsPage } from "./pages/nft/NftMyHoldingsPage";
 import { NftMarketPage } from "./pages/nft/NftMarketPage";
 import { NftMarketHistoryPage } from "./pages/nft/NftMarketHistoryPage";
+import { LendingPage } from "./pages/lending/LendingPage";
+import { LendingHomePage } from "./pages/lending/LendingHomePage";
+import { LendingPoolPage } from "./pages/lending/LendingPoolPage";
 
 export default function App() {
   return (
@@ -42,6 +45,10 @@ export default function App() {
             <Route path="create" element={<NftCreateCollectionPage />} />
             <Route path="collections/:contractAddress/mint" element={<NftCollectionMintPage />} />
             <Route path="collections/:collectionId" element={<NftCollectionDetailPage />} />
+          </Route>
+          <Route path="lending" element={<LendingPage />}>
+            <Route index element={<LendingHomePage />} />
+            <Route path="pool" element={<LendingPoolPage />} />
           </Route>
         </Route>
       </Routes>

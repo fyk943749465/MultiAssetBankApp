@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import type { Connector } from "wagmi";
 import { sepolia } from "wagmi/chains";
+import { chainIdLabel, getRouteRequiredChainId } from "@/lib/chain-policy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const WALLET_BAR_HINT =
-  "请用系统浏览器打开 http://localhost:5173 并安装 MetaMask 等扩展；IDE 内置预览通常没有 window.ethereum。链上读写可用 Wagmi 的 useReadContract / useWriteContract。";
+  "请用系统浏览器打开 http://localhost:5173 并安装 MetaMask 等扩展；IDE 内置预览通常没有 window.ethereum。当前页面会限制网络：借贷模块仅 Base Sepolia（L2）；银行 / 众筹 / NFT 仅 Ethereum Sepolia（L1）。";
 
 function connectorExplicitlyUnavailable(c: Connector): boolean {
   return "ready" in c && (c as Connector & { ready?: boolean }).ready === false;
@@ -49,12 +51,16 @@ type ConnectWalletProps = {
 };
 
 export function ConnectWallet({ compact = false }: ConnectWalletProps) {
+  const { pathname } = useLocation();
   const { address, isConnected, status } = useAccount();
   const chainId = useChainId();
   const { connect, connectors, isPending, error, reset } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const [addressCopied, setAddressCopied] = useState(false);
+
+  const requiredChainId = getRouteRequiredChainId(pathname);
+  const requiredShortLabel = requiredChainId === sepolia.id ? "Sepolia" : "Base Sepolia";
 
   const copyAddress = useCallback(async () => {
     if (!address) return;
@@ -68,14 +74,14 @@ export function ConnectWallet({ compact = false }: ConnectWalletProps) {
     if (!address) setAddressCopied(false);
   }, [address]);
 
-  const wrongNetwork = isConnected && chainId !== sepolia.id;
+  const wrongNetwork = isConnected && chainId !== requiredChainId;
 
   if (compact) {
     return (
       <div className="flex max-w-full flex-col items-end gap-1" title={WALLET_BAR_HINT}>
         <section
           className="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border bg-card/80 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur-md dark:shadow-black/20"
-          aria-label="钱包 · Sepolia"
+          aria-label="钱包 · 网络"
         >
           <div className="min-w-0 text-right">
             {status === "connecting" && (
@@ -101,7 +107,7 @@ export function ConnectWallet({ compact = false }: ConnectWalletProps) {
                   </span>
                 </button>
                 <Badge variant={wrongNetwork ? "destructive" : "secondary"}>
-                  {wrongNetwork ? "网络不对" : "Sepolia"}
+                  {wrongNetwork ? `需 ${requiredShortLabel}` : chainIdLabel(chainId)}
                 </Badge>
               </div>
             )}
@@ -129,9 +135,9 @@ export function ConnectWallet({ compact = false }: ConnectWalletProps) {
                 variant="destructive"
                 size="xs"
                 disabled={isSwitching}
-                onClick={() => switchChain({ chainId: sepolia.id })}
+                onClick={() => switchChain({ chainId: requiredChainId })}
               >
-                {isSwitching ? "…" : "切 Sepolia"}
+                {isSwitching ? "…" : `切 ${requiredShortLabel}`}
               </Button>
             )}
             {isConnected && (
@@ -154,7 +160,7 @@ export function ConnectWallet({ compact = false }: ConnectWalletProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-primary">钱包 · Sepolia</CardTitle>
+        <CardTitle className="text-primary">钱包 · 按页面限网</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -182,7 +188,7 @@ export function ConnectWallet({ compact = false }: ConnectWalletProps) {
                   链 ID: <span className="font-mono text-foreground">{chainId}</span>
                   {wrongNetwork && (
                     <span className="ml-2 font-medium text-warning">
-                      （需要切换到 Sepolia {sepolia.id}）
+                      （本页需要 {chainIdLabel(requiredChainId)} {requiredChainId}）
                     </span>
                   )}
                 </p>
@@ -207,12 +213,8 @@ export function ConnectWallet({ compact = false }: ConnectWalletProps) {
                 </Button>
               ))}
             {isConnected && wrongNetwork && (
-              <Button
-                variant="destructive"
-                disabled={isSwitching}
-                onClick={() => switchChain({ chainId: sepolia.id })}
-              >
-                {isSwitching ? "切换中…" : "切换到 Sepolia"}
+              <Button variant="destructive" disabled={isSwitching} onClick={() => switchChain({ chainId: requiredChainId })}>
+                {isSwitching ? "切换中…" : `切换到 ${chainIdLabel(requiredChainId)}`}
               </Button>
             )}
             {isConnected && (

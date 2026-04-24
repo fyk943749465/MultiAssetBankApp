@@ -1,5 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
+import { ModuleChainGate } from "@/components/ModuleChainGate";
 import { NavButton } from "@/components/nav-spa";
+import { L1_MODULE_CHAIN_ID } from "@/lib/chain-policy";
 import { cn } from "@/lib/utils";
 
 function navClass({ isActive }: { isActive: boolean }) {
@@ -27,7 +29,7 @@ export function CrowdfundingPage() {
           Crowdfunding Module
         </h2>
         <p className="text-[15px] leading-relaxed text-muted-foreground/90 max-w-3xl">
-          Code Pulse 第二阶段已接入动作预检、交易构建/提交、提案创建与管理台。你可以在详情页、工作台和 Admin 页面直接执行链上业务动作。
+          Code Pulse 运行在 <strong className="text-foreground/90">Ethereum Sepolia（L1）</strong>；已连接钱包时若不在该网络，下方主内容将锁定。借贷功能请从顶栏进入「借贷」模块（Base Sepolia / L2）。
         </p>
         <nav className="mt-8 flex flex-wrap gap-2 rounded-2xl bg-black/20 p-2 ring-1 ring-white/5" aria-label="Code Pulse 子导航">
           <NavButton to="/crowdfunding" className={navClass({ isActive: homeActive })} aria-current={homeActive ? "page" : undefined}>
@@ -49,7 +51,9 @@ export function CrowdfundingPage() {
       </div>
 
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 delay-75 fill-mode-both">
-        <Outlet />
+        <ModuleChainGate requiredChainId={L1_MODULE_CHAIN_ID} moduleName="众筹合约（Code Pulse）">
+          <Outlet />
+        </ModuleChainGate>
       </div>
     </div>
   );

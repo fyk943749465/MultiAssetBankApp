@@ -1,6 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { ModuleChainGate } from "@/components/ModuleChainGate";
 import { NavButton } from "@/components/nav-spa";
+import { L1_MODULE_CHAIN_ID } from "@/lib/chain-policy";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -70,8 +72,8 @@ export function NftPage() {
           <span>NFT Module</span>
         </h2>
         <p className="max-w-3xl text-[15px] leading-relaxed text-muted-foreground/90">
-          工厂、模板与市场合约地址来自前端环境变量；合集/挂单列表由 Go 后端 <code className="rounded bg-muted/80 px-1 text-[13px]">/api/nft/*</code>{" "}
-          提供：<strong className="text-foreground/90">子图可用且有数据时优先子图</strong>，否则读 PostgreSQL（扫块入库较慢时以子图为准）。
+          NFT 链上合约为 <strong className="text-foreground/90">Ethereum Sepolia（L1）</strong>；已连接钱包时若不在该网络，下方主内容将锁定。工厂、模板与市场地址来自环境变量；列表由后端{" "}
+          <code className="rounded bg-muted/80 px-1 text-[13px]">/api/nft/*</code> 提供，子图可用时优先子图。
         </p>
         <nav className="mt-8 flex flex-wrap gap-2 rounded-2xl bg-black/20 p-2 ring-1 ring-white/5" aria-label="NFT 子导航">
           <NavButton to="/nft" className={navClass({ isActive: homeActive })} aria-current={homeActive ? "page" : undefined}>
@@ -99,7 +101,9 @@ export function NftPage() {
 
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 delay-75">
         <NftOutletErrorBoundary>
-          <Outlet />
+          <ModuleChainGate requiredChainId={L1_MODULE_CHAIN_ID} moduleName="NFT 平台">
+            <Outlet />
+          </ModuleChainGate>
         </NftOutletErrorBoundary>
       </div>
     </div>

@@ -1,0 +1,328 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_verifierProxy",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "AuthorizedOracleAlreadySet",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AuthorizedOracleNotSet",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16",
+        "name": "version",
+        "type": "uint16"
+      }
+    ],
+    "name": "InvalidReportVersion",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NativeSweepFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableInvalidOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableUnauthorizedAccount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ReportDataTooShort",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "SafeERC20FailedOperation",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnauthorizedCaller",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAuthorizedOracle",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroLinkPayer",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroSweepRecipient",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "authorizedOracle",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "oracle",
+        "type": "address"
+      }
+    ],
+    "name": "setAuthorizedOracle",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address payable",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "sweepNative",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "sweepToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verifierProxy",
+    "outputs": [
+      {
+        "internalType": "contract IVerifierProxy",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "linkPayer",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "unverifiedReport",
+        "type": "bytes"
+      }
+    ],
+    "name": "verifyReport",
+    "outputs": [
+      {
+        "internalType": "int192",
+        "name": "price",
+        "type": "int192"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "linkPayer",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "unverifiedReport",
+        "type": "bytes"
+      }
+    ],
+    "name": "verifyReportFull",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "feedId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "validFromTimestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "observationsTimestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint192",
+            "name": "nativeFee",
+            "type": "uint192"
+          },
+          {
+            "internalType": "uint192",
+            "name": "linkFee",
+            "type": "uint192"
+          },
+          {
+            "internalType": "uint32",
+            "name": "expiresAt",
+            "type": "uint32"
+          },
+          {
+            "internalType": "int192",
+            "name": "price",
+            "type": "int192"
+          },
+          {
+            "internalType": "int192",
+            "name": "bid",
+            "type": "int192"
+          },
+          {
+            "internalType": "int192",
+            "name": "ask",
+            "type": "int192"
+          }
+        ],
+        "internalType": "struct ReportsVerifier.ReportV3",
+        "name": "r",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "stateMutability": "payable",
+    "type": "receive"
+  }
+]

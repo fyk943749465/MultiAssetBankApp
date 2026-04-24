@@ -2,7 +2,7 @@
 // @version         0.1.0
 // @description     REST API: health, chain status, counter contract calls, bank ledger (PostgreSQL indexer + optional The Graph subgraph). Code Pulse: PostgreSQL is filled by RPC log indexer by default; subgraph sync to DB is optional. NFT: RPC indexer writes factory/market/collection events to PostgreSQL (005_nft_platform); list endpoints may still prefer The Graph when configured; subgraph is not persisted to PostgreSQL.
 // @BasePath        /
-//go:generate go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -d .,../../internal/handlers,../../internal/handlers/system,../../internal/handlers/chain,../../internal/handlers/bank,../../internal/handlers/contract,../../internal/handlers/codepulse -g main.go -o ../../docs --parseDependency --parseInternal
+//go:generate go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -d .,../../internal/handlers,../../internal/handlers/system,../../internal/handlers/chain,../../internal/handlers/bank,../../internal/handlers/contract,../../internal/handlers/codepulse,../../internal/handlers/lending -g main.go -o ../../docs --parseDependency --parseInternal
 
 package main
 
@@ -60,6 +60,20 @@ func main() {
 		defer ethClient.Close()
 	}
 
+	var lendingEthClient *chain.Client
+	if u := strings.TrimSpace(cfg.LendingEthRPCURL); u != "" {
+		lc, errLC := chain.Dial(u)
+		if errLC != nil {
+			log.Printf("lending chain: LENDING_ETH_RPC_URL/BASE_ETH_RPC_URL 已配置但连接失败，借贷专用链上探测将不可用: %v", errLC)
+		} else {
+			lendingEthClient = lc
+			log.Printf("lending chain: 已连接借贷专用 RPC（与 ETH_RPC_URL 隔离）")
+		}
+	}
+	if lendingEthClient != nil {
+		defer lendingEthClient.Close()
+	}
+
 	var counter *contracts.Counter
 	if ethClient != nil && cfg.CounterContract != "" {
 		if !common.IsHexAddress(cfg.CounterContract) {
@@ -114,6 +128,18 @@ func main() {
 		log.Printf("subgraph: 已配置 SUBGRAPH_NFT_URL（NFT 列表可优先子图；/api/nft/subgraph/meta；子图本身不入 PG，合集/挂单权威数据来自 RPC 索引器）")
 	}
 
+	var lendingSubClient *subgraph.Client
+	if u := strings.TrimSpace(cfg.SubgraphLendingURL); u != "" {
+		lendingSubClient = subgraph.New(u, cfg.LendingSubgraphAPIKey, sgClientCfg)
+		switch {
+		case cfg.LendingSubgraphAPIKeySource != "":
+			log.Printf("subgraph: 已配置 SUBGRAPH_LENDING_URL，Bearer 来自 %s（与 SUBGRAPH_API_KEY 隔离，不用于其他子图）", cfg.LendingSubgraphAPIKeySource)
+		default:
+			log.Printf("subgraph: 已配置 SUBGRAPH_LENDING_URL（未设置 SUBGRAPH_LENDING_API_KEY / SUBGRAPH_API_SECOND_KEY；Studio 若需鉴权请配置其一）")
+		}
+		log.Printf("subgraph: 借贷列表仍以 PostgreSQL 为底；supplies 子图非空时优先子图")
+	}
+
 	var codePulse *contracts.CodePulse
 	if a := strings.TrimSpace(cfg.CodePulseAddress); a != "" {
 		if !common.IsHexAddress(a) {
@@ -133,15 +159,20 @@ func main() {
 	}
 
 	h := &handlers.Handlers{
-		DB:                db,
-		Chain:             ethClient,
-		Counter:           counter,
-		TxKey:             txKey,
-		Subgraph:          subClient,
-		CodePulse:         codePulse,
-		SubgraphCodePulse: cpSubClient,
-		SubgraphNft:       nftSubClient,
-		CodePulseServerTx: cfg.CodePulseServerTx,
+		DB:                           db,
+		Chain:                        ethClient,
+		Counter:                      counter,
+		TxKey:                        txKey,
+		Subgraph:                     subClient,
+		CodePulse:                    codePulse,
+		SubgraphCodePulse:            cpSubClient,
+		SubgraphNft:                  nftSubClient,
+		SubgraphLending:              lendingSubClient,
+		LendingChain:                 lendingEthClient,
+		LendingChainID:               cfg.LendingChainID,
+		LendingSubgraphAPIKeySource:  cfg.LendingSubgraphAPIKeySource,
+		LendingSubgraphAPIKeyPresent: strings.TrimSpace(cfg.LendingSubgraphAPIKey) != "",
+		CodePulseServerTx:            cfg.CodePulseServerTx,
 	}
 	r := router.New(h)
 

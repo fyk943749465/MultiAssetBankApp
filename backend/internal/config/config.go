@@ -9,15 +9,15 @@ import (
 )
 
 type Config struct {
-	ServerAddr                   string
-	DatabaseURL                  string
-	EthRPCURL                    string
-	CounterContract              string // optional: deployed Counter contract address (hex)
-	EthPrivateKeyHex             string // optional: hex private key for contract writes (keep secret)
-	BankContract                 string // optional: MultiAssetBank for event indexer
-	BankIndexerStartBlock        uint64 // optional: first block to scan (0 = use head-2000 on init)
-	SubgraphURL                  string // optional: The Graph Studio query URL (bank)
-	SubgraphAPIKey               string // optional: Studio API key (Bearer)
+	ServerAddr            string
+	DatabaseURL           string
+	EthRPCURL             string
+	CounterContract       string // optional: deployed Counter contract address (hex)
+	EthPrivateKeyHex      string // optional: hex private key for contract writes (keep secret)
+	BankContract          string // optional: MultiAssetBank for event indexer
+	BankIndexerStartBlock uint64 // optional: first block to scan (0 = use head-2000 on init)
+	SubgraphURL           string // optional: The Graph Studio query URL (bank)
+	SubgraphAPIKey        string // optional: Studio API key (Bearer)
 	// SubgraphQueryCacheTTLSeconds：子图 GraphQL 响应内存缓存秒数（相同 query+variables 命中则不发 HTTP）。0=关闭。默认 30，减轻 Studio 免费档每日约 3000 次查询压力。
 	SubgraphQueryCacheTTLSeconds int
 	// SubgraphQueryCacheMaxEntries：缓存条数上限（仅 TTL>0 时生效），默认 512。
@@ -39,9 +39,16 @@ type Config struct {
 	// CodePulseInitiatorReconcileSeconds 将 cp_wallet_roles 中全局 proposal_initiator 与链上白名单定时对齐（秒）；0 表示关闭。
 	// 子图可用时按子图事件折叠结果写库；子图失败时用合约 isProposalInitiator 刷新库中已出现过的地址。
 	CodePulseInitiatorReconcileSeconds int
-	SubgraphNftURL          string // optional: NFT platform subgraph (The Graph)
-	NftSubgraphPollSeconds int    // optional: indexer poll interval, default 35
-	NftSubgraphStartBlock  uint64 // optional: first blockNumber_gt cursor = start-1
+	SubgraphNftURL                     string // optional: NFT platform subgraph (The Graph)
+	NftSubgraphPollSeconds             int    // optional: indexer poll interval, default 35
+	NftSubgraphStartBlock              uint64 // optional: first blockNumber_gt cursor = start-1
+	SubgraphLendingURL                 string // optional: lending subgraph (The Graph); supplies list may prefer when non-empty
+	LendingChainID                     int64  // optional: lending API / tables default chain_id (0 = handlers default 84532)
+	// LendingSubgraphAPIKey：借贷子图专用 Studio Bearer；来自 SUBGRAPH_LENDING_API_KEY，否则 SUBGRAPH_API_SECOND_KEY。绝不使用 SUBGRAPH_API_KEY。
+	LendingSubgraphAPIKey       string
+	LendingSubgraphAPIKeySource string // which env won: SUBGRAPH_LENDING_API_KEY | SUBGRAPH_API_SECOND_KEY | "" (empty if no key)
+	// LendingEthRPCURL：借贷专用 JSON-RPC；LENDING_ETH_RPC_URL 优先，否则 BASE_ETH_RPC_URL。与 EthRPCURL（银行/Code Pulse 等）隔离。
+	LendingEthRPCURL string
 }
 
 func Load() (*Config, error) {
@@ -109,32 +116,60 @@ func Load() (*Config, error) {
 	}
 	nftSubStart, _ := strconv.ParseUint(strings.TrimSpace(os.Getenv("NFT_SUBGRAPH_START_BLOCK")), 10, 64)
 
+	lendingChainID := int64(0)
+	if v := strings.TrimSpace(os.Getenv("LENDING_CHAIN_ID")); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			lendingChainID = n
+		}
+	}
+
+	lendingSubKey := strings.TrimSpace(os.Getenv("SUBGRAPH_LENDING_API_KEY"))
+	lendingSubKeySource := ""
+	if lendingSubKey != "" {
+		lendingSubKeySource = "SUBGRAPH_LENDING_API_KEY"
+	} else {
+		lendingSubKey = strings.TrimSpace(os.Getenv("SUBGRAPH_API_SECOND_KEY"))
+		if lendingSubKey != "" {
+			lendingSubKeySource = "SUBGRAPH_API_SECOND_KEY"
+		}
+	}
+
+	lendingRPC := strings.TrimSpace(os.Getenv("LENDING_ETH_RPC_URL"))
+	if lendingRPC == "" {
+		lendingRPC = strings.TrimSpace(os.Getenv("BASE_ETH_RPC_URL"))
+	}
+
 	return &Config{
-		ServerAddr:                   getEnv("SERVER_ADDR", ":8080"),
-		DatabaseURL:                  os.Getenv("DATABASE_URL"),
-		EthRPCURL:                    os.Getenv("ETH_RPC_URL"),
-		CounterContract:              os.Getenv("COUNTER_CONTRACT_ADDRESS"),
-		EthPrivateKeyHex:             os.Getenv("ETH_PRIVATE_KEY"),
-		BankContract:                 os.Getenv("BANK_CONTRACT_ADDRESS"),
-		BankIndexerStartBlock:        startBlk,
-		SubgraphURL:                  os.Getenv("SUBGRAPH_URL"),
-		SubgraphAPIKey:               os.Getenv("SUBGRAPH_API_KEY"),
-		SubgraphQueryCacheTTLSeconds: sgCacheTTL,
-		SubgraphQueryCacheMaxEntries: sgCacheMax,
-		CodePulseAddress:             os.Getenv("CODE_PULSE_ADDRESS"),
-		SubgraphCodePulseURL:         os.Getenv("SUBGRAPH_CODE_PULSE_URL"),
-		CodePulseSubgraphStartBlock:  cpSubStart,
-		CodePulseSubgraphPollSeconds: cpPoll,
-		CodePulseIndexerStartBlock:   cpIdxStart,
-		CodePulseSubgraphSync:        cpSubSync,
-		IndexerPollSeconds:           idxPoll,
-		IndexerFilterChunkPauseMs:    idxPauseMs,
-		IndexerMaxBlockSpan:          idxSpan,
-		CodePulseServerTx:                   cpServerTx,
+		ServerAddr:                         getEnv("SERVER_ADDR", ":8080"),
+		DatabaseURL:                        os.Getenv("DATABASE_URL"),
+		EthRPCURL:                          os.Getenv("ETH_RPC_URL"),
+		CounterContract:                    os.Getenv("COUNTER_CONTRACT_ADDRESS"),
+		EthPrivateKeyHex:                   os.Getenv("ETH_PRIVATE_KEY"),
+		BankContract:                       os.Getenv("BANK_CONTRACT_ADDRESS"),
+		BankIndexerStartBlock:              startBlk,
+		SubgraphURL:                        os.Getenv("SUBGRAPH_URL"),
+		SubgraphAPIKey:                     os.Getenv("SUBGRAPH_API_KEY"),
+		SubgraphQueryCacheTTLSeconds:       sgCacheTTL,
+		SubgraphQueryCacheMaxEntries:       sgCacheMax,
+		CodePulseAddress:                   os.Getenv("CODE_PULSE_ADDRESS"),
+		SubgraphCodePulseURL:               os.Getenv("SUBGRAPH_CODE_PULSE_URL"),
+		CodePulseSubgraphStartBlock:        cpSubStart,
+		CodePulseSubgraphPollSeconds:       cpPoll,
+		CodePulseIndexerStartBlock:         cpIdxStart,
+		CodePulseSubgraphSync:              cpSubSync,
+		IndexerPollSeconds:                 idxPoll,
+		IndexerFilterChunkPauseMs:          idxPauseMs,
+		IndexerMaxBlockSpan:                idxSpan,
+		CodePulseServerTx:                  cpServerTx,
 		CodePulseInitiatorReconcileSeconds: cpInitRec,
 		SubgraphNftURL:                     strings.TrimSpace(os.Getenv("SUBGRAPH_NFT_URL")),
 		NftSubgraphPollSeconds:             nftSubPoll,
 		NftSubgraphStartBlock:              nftSubStart,
+		SubgraphLendingURL:                 strings.TrimSpace(os.Getenv("SUBGRAPH_LENDING_URL")),
+		LendingChainID:                     lendingChainID,
+		LendingSubgraphAPIKey:              lendingSubKey,
+		LendingSubgraphAPIKeySource:        lendingSubKeySource,
+		LendingEthRPCURL:                   lendingRPC,
 	}, nil
 }
 
