@@ -27,9 +27,9 @@
 | **栈** | React 19、Vite 6、TypeScript |
 | **链上** | [wagmi](https://wagmi.sh/) v2 + [viem](https://viem.sh/)（连接钱包、读合约、发交易） |
 | **UI** | Tailwind CSS v4、Base UI 等（详见 `frontend/package.json`） |
-| **路由** | React Router；当前包含 **银行**、**众筹** 等页面（入口见 `frontend/src/App.tsx`） |
+| **路由** | React Router；包含 **银行**、**众筹**、**NFT**（概览、我的持有、**市场**与**市场事件历史**、创建合集、铸造与合集详情等；入口见 `frontend/src/App.tsx`） |
 
-**怎么跑**：在 `frontend/` 下执行 `npm install` 与 `npm run dev`（默认 Vite 开发服务器，端口以终端输出为准）。
+**怎么跑、路由说明、与后端 NFT API 的约定**：见 [`frontend/README.md`](frontend/README.md)。
 
 ---
 
@@ -53,8 +53,8 @@
 
 ```text
 go-chain/
-├── backend/          # Go API、扫块索引、Swagger
-├── frontend/         # React + Vite 前端
+├── backend/          # Go API、扫块索引、Swagger（见 backend/README.md）
+├── frontend/         # React + Vite 前端（见 frontend/README.md）
 ├── subgraph/         # 多个子图工程（nft-platform、银行等）
 ├── script/           # NFT 图片/元数据上传 Irys Devnet（见 script/README.md）
 ├── docs/             # 架构与约定说明

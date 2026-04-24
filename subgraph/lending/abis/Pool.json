@@ -1,0 +1,607 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_hybridPriceOracle",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  { "name": "AssetNotFound", "type": "error", "inputs": [] },
+  { "name": "BadProofsLength", "type": "error", "inputs": [] },
+  { "name": "BorrowCapExceeded", "type": "error", "inputs": [] },
+  { "name": "BorrowExceedsLtv", "type": "error", "inputs": [] },
+  { "name": "EnforcedPause", "type": "error", "inputs": [] },
+  { "name": "ExpectedPause", "type": "error", "inputs": [] },
+  { "name": "InsufficientLiquidity", "type": "error", "inputs": [] },
+  { "name": "InvalidAsset", "type": "error", "inputs": [] },
+  { "name": "InvalidEMode", "type": "error", "inputs": [] },
+  { "name": "InvalidLiquidationProtocolFee", "type": "error", "inputs": [] },
+  { "name": "InvalidRecipient", "type": "error", "inputs": [] },
+  { "name": "InvalidRiskParams", "type": "error", "inputs": [] },
+  { "name": "LinkPayerMustBeCaller", "type": "error", "inputs": [] },
+  { "name": "NotDeployer", "type": "error", "inputs": [] },
+  { "name": "NotLiquidatable", "type": "error", "inputs": [] },
+  { "name": "ReentrancyGuardReentrantCall", "type": "error", "inputs": [] },
+  { "name": "ReserveAlreadyInitialized", "type": "error", "inputs": [] },
+  { "name": "ReserveNotFound", "type": "error", "inputs": [] },
+  {
+    "name": "SafeERC20FailedOperation",
+    "type": "error",
+    "inputs": [
+      { "name": "token", "type": "address", "internalType": "address" }
+    ]
+  },
+  { "name": "SupplyCapExceeded", "type": "error", "inputs": [] },
+  { "name": "Unhealthy", "type": "error", "inputs": [] },
+  { "name": "ZeroAmount", "type": "error", "inputs": [] },
+  { "name": "ZeroDebtToLiquidate", "type": "error", "inputs": [] },
+  { "name": "ZeroInterestRateStrategy", "type": "error", "inputs": [] },
+  { "name": "ZeroLiquidationBonus", "type": "error", "inputs": [] },
+  {
+    "name": "Borrow",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "LiquidationCall",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "collateralAsset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "debtAsset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "borrower",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "liquidator",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "debtCovered",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "collateralToLiquidator",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "collateralProtocolFee",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Paused",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "ProtocolFeeRecipientUpdated",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "newRecipient",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Repay",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "ReserveCapsUpdated",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "supplyCap",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "borrowCap",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "ReserveLiquidationProtocolFeeUpdated",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "feeBps",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Supply",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Unpaused",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "UserEModeSet",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "categoryId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Withdraw",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "CLOSE_FACTOR",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "borrow",
+    "type": "function",
+    "inputs": [
+      { "name": "asset", "type": "address", "internalType": "address" },
+      { "name": "amount", "type": "uint256", "internalType": "uint256" },
+      { "name": "priceProofs", "type": "bytes[]", "internalType": "bytes[]" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "deployer",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "eModeCategories",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "uint8", "internalType": "uint8" }],
+    "outputs": [
+      { "name": "ltv", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "liquidationThreshold",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "liquidationBonus",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      { "name": "label", "type": "string", "internalType": "string" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getUserHealthFactor",
+    "type": "function",
+    "inputs": [
+      { "name": "user", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      { "name": "healthFactor", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "weightedCollateralUsdWad",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalDebtUsdWad",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "initReserve",
+    "type": "function",
+    "inputs": [
+      { "name": "asset", "type": "address", "internalType": "address" },
+      {
+        "name": "interestRateStrategy_",
+        "type": "address",
+        "internalType": "address"
+      },
+      { "name": "ltv", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "liquidationThreshold",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "liquidationBonus",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      { "name": "supplyCap", "type": "uint256", "internalType": "uint256" },
+      { "name": "borrowCap", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "isCollateralEnabled",
+    "type": "function",
+    "inputs": [
+      { "name": "user", "type": "address", "internalType": "address" },
+      { "name": "asset", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "liquidate",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "collateralAsset",
+        "type": "address",
+        "internalType": "address"
+      },
+      { "name": "debtAsset", "type": "address", "internalType": "address" },
+      { "name": "borrower", "type": "address", "internalType": "address" },
+      { "name": "debtToCover", "type": "uint256", "internalType": "uint256" },
+      { "name": "priceProofs", "type": "bytes[]", "internalType": "bytes[]" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "pause",
+    "type": "function",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "paused",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "priceOracle",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IHybridPriceOracle"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "protocolFeeRecipient",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "repay",
+    "type": "function",
+    "inputs": [
+      { "name": "asset", "type": "address", "internalType": "address" },
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "reserves",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [
+      {
+        "name": "aToken",
+        "type": "address",
+        "internalType": "contract AToken"
+      },
+      {
+        "name": "debtToken",
+        "type": "address",
+        "internalType": "contract VariableDebtToken"
+      },
+      {
+        "name": "liquidityIndex",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      { "name": "borrowIndex", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "lastUpdateTimestamp",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      { "name": "ltv", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "liquidationThreshold",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "liquidationBonus",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "liquidationProtocolFeeBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      { "name": "isActive", "type": "bool", "internalType": "bool" },
+      { "name": "supplyCap", "type": "uint256", "internalType": "uint256" },
+      { "name": "borrowCap", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "interestRateStrategy",
+        "type": "address",
+        "internalType": "contract InterestRateStrategy"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "reservesList",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "setProtocolFeeRecipient",
+    "type": "function",
+    "inputs": [
+      { "name": "recipient", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "setReserveCaps",
+    "type": "function",
+    "inputs": [
+      { "name": "asset", "type": "address", "internalType": "address" },
+      { "name": "supplyCap", "type": "uint256", "internalType": "uint256" },
+      { "name": "borrowCap", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "setReserveLiquidationProtocolFee",
+    "type": "function",
+    "inputs": [
+      { "name": "asset", "type": "address", "internalType": "address" },
+      { "name": "feeBps", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "setUserEMode",
+    "type": "function",
+    "inputs": [
+      { "name": "categoryId", "type": "uint8", "internalType": "uint8" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "supply",
+    "type": "function",
+    "inputs": [
+      { "name": "asset", "type": "address", "internalType": "address" },
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "unpause",
+    "type": "function",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "userBorrowBitmap",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "userCollateralBitmap",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "userEMode",
+    "type": "function",
+    "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "", "type": "uint8", "internalType": "uint8" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "withdraw",
+    "type": "function",
+    "inputs": [
+      { "name": "asset", "type": "address", "internalType": "address" },
+      { "name": "amount", "type": "uint256", "internalType": "uint256" },
+      { "name": "priceProofs", "type": "bytes[]", "internalType": "bytes[]" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]
